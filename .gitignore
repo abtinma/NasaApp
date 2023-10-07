@@ -16,3 +16,5 @@ database-debug.log
 .firebase
 .vscode
 ui-debug.log
+Backend/venv
+Backend/__pycache__
