@@ -1,25 +1,91 @@
 <script>
-  import { bellSvg } from "$lib/svgs";
+  import { arrowSvg, bellSvg } from "$lib/svgs";
+  import { scrollY } from "$lib/stores";
+  import { page } from "$app/stores";
+  import { goto } from "$app/navigation";
+  import {
+    navigateBack,
+    navigateForward,
+    historyStore,
+  } from "$lib/stores.ts";
+  import * as svgs from "$lib/svgs.js";
+
+  $: currentPage = $page.url.pathname;
 </script>
 
 <div class="container">
   <div class="left-side">
-    <div class="nav-btn">Home</div>
-    <div class="nav-btn">My Projects</div>
-    <div class="nav-btn">My Groups</div>
-    <div class="nav-btn">Discover</div>
-    <div class="nav-btn">Messages</div>
-    <div class="nav-btn">Discussions</div>
+    <div class="logo-container">
+      <img src="/logo252.png" alt="" />
+      <p>GitTogether</p>
+    </div>
+    <button
+      class="nav-btn"
+      class:selected={currentPage == "/home"}
+      on:click={() => goto("/home")}
+      ><span class="icon">{@html svgs.homeSvg}</span> Home</button
+    >
+    <button
+      class="nav-btn"
+      class:selected={currentPage == "/my-projects"}
+      on:click={() => goto("/my-projects")}
+      ><span class="icon">{@html svgs.folderOpenDotSvg}</span>My Projects</button
+    >
+    <button
+      class="nav-btn"
+      class:selected={currentPage == "/discover"}
+      on:click={() => goto("/discover")}
+      ><span class="icon">{@html svgs.compassSvg}</span>Discover</button
+    >
+    <button
+      class="nav-btn"
+      class:selected={currentPage == "/messages"}
+      on:click={() => goto("/messages")}
+      ><span class="icon">{@html svgs.messageCircleSvg}</span>Messages</button
+    >
+    <button
+      class="nav-btn"
+      class:selected={currentPage == "/discussions"}
+      on:click={() => goto("/discussions")}
+      ><span class="icon">{@html svgs.peopleSvg}</span>Discussions</button
+    >
+    <button
+      class="nav-btn"
+      class:selected={currentPage.includes("/project")}
+      on:click={() => goto("/project/nasa")}
+      ><span class="icon">{@html svgs.folderSvg}</span>Sample Project</button
+    >
   </div>
-  <div class="right-side">
+  <div
+    class="right-side"
+    on:scroll={(e) => {
+      scrollY.set(e.target.scrollTop);
+    }}
+  >
     <div class="top-bar">
+      <button
+        class="back"
+        class:unavailable={$historyStore?.history.length == 1 ||
+          $historyStore?.currentIndex == 0}
+        on:click={(e) => {
+          navigateBack();
+        }}><span class="icon">{@html arrowSvg}</span></button
+      >
+      <button
+        class="forward"
+        class:unavailable={$historyStore?.currentIndex ==
+          $historyStore?.history.length - 1}
+        on:click={(e) => {
+          navigateForward();
+        }}><span class="icon">{@html arrowSvg}</span></button
+      >
       <input type="text" class="search-input" placeholder="Search" />
       <div class="icon"><span>{@html bellSvg}</span></div>
       <div class="profile-picture">
         <img src="/pic.png" alt="" />
       </div>
     </div>
-    <slot/>
+    <slot />
   </div>
 </div>
 
@@ -27,65 +93,69 @@
   .container {
     display: flex;
     flex-direction: row;
-    /* align-items: center; */
-    /* justify-content: center; */
     height: 100vh;
     width: 100%;
     overflow: hidden;
-    /* gap: 10px; */
-    /* border: 1px solid red; */
   }
   .left-side {
     display: flex;
     flex-direction: column;
     padding: 12px;
-    /* align-items: center; */
-    /* justify-content: center; */
-    width: 200px;
+    width: 220px;
+    min-width: 220px;
+    gap: 4px;
     height: 100%;
     background-color: #ffffff;
-    /* gap: 16px; */
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    /* width: 100%; */
+    z-index: 11;
+  }
+  button {
+    border: none;
+    background-color: white;
+    outline: none;
   }
   .nav-btn {
     display: flex;
-    padding: 0 12px;
+    padding: 0 4px;
     font-size: 18px;
     height: 40px;
     align-items: center;
     border-radius: 8px;
+    color: black !important;
     transition: transform 0.1s ease-in-out;
+    gap: 8px;
   }
-  .nav-btn:hover {
+  .nav-btn:not(.selected):hover {
     background-color: #f2f2f2;
     user-select: none;
   }
   .nav-btn:active {
     background-color: #e6e6e6;
     transform: scale(0.98);
-
+  }
+  .selected {
+    background-color: #e6e6e6;
   }
   .right-side {
     display: flex;
+    position: relative;
     flex-direction: column;
-    /* align-items: center; */
-    /* justify-content: center; */
-    /* gap: 16px; */
-    /* background-color: red; */
+
     height: 100%;
     width: 100%;
     overflow-x: hidden;
-    /* width: 100%; */
   }
   .top-bar {
+    position: sticky;
+    top: 0;
     display: flex;
     align-items: center;
-    height: 80px;
+    height: 60px;
     width: 100%;
-    /* background-color: red; */
-    padding: 12px;
+    background-color: white;
+    padding: 8px;
     gap: 8px;
+    z-index: 10;
   }
   .search-input {
     padding: 12px;
@@ -94,21 +164,46 @@
     outline: none;
     font-size: 18px;
     width: 100%;
+    height: 100%;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  }
+  .back,
+  .forward {
+    display: flex;
+    height: 100%;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    color: rgb(75, 75, 75);
+    border: none;
+
+    transition: transform 0.1s ease-in-out, scale 0.1s ease-in-out;
+
+    &:hover {
+      cursor: pointer;
+      color: black;
+    }
+    &:active {
+      background-color: rgb(250, 250, 250);
+    }
+    & span:hover {
+      background-color: transparent;
+    }
+  }
+  .forward {
+    transform: rotate(180deg);
   }
   .profile-picture {
     display: flex;
-    height: 70%;
-    /* width: 40px; */
+    height: 100%;
     aspect-ratio: 1;
     border-radius: 50%;
-    /* overflow: hidden; */
     transition: transform 0.1s ease-in-out;
 
     & img {
       height: 100%;
       border-radius: 50%;
-      /* width: 100%; */
       aspect-ratio: 1;
       object-fit: cover;
     }
@@ -127,11 +222,9 @@
     align-items: center;
     justify-content: center;
     aspect-ratio: 1;
-    scale: 1;
     border-radius: 50%;
 
-    transition:  background-color 0.1s ease-in-out;
-    /* border: 1px solid red; */
+    transition: background-color 0.1s ease-in-out;
 
     & span {
       display: flex;
@@ -141,21 +234,34 @@
       aspect-ratio: 1;
       scale: 1.4;
       border-radius: 50%;
-      /* width: 100%; */
-      /* overflow: hidden; */
       transition: transform 0.1s ease-in-out;
     }
-    /* overflow: hidden; */
   }
-  .icon:hover  {
-
+  .icon:hover {
     cursor: pointer;
     background-color: rgb(232, 232, 232);
-
   }
   .icon:active span {
-    transform: scale(0.90);
+    transform: scale(0.9);
+  }
 
+  .logo-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 8px;
+    background-color: rgb(237, 237, 237);
+    transition: transform 0.1s ease-in-out;
 
+    & img {
+      height: 40px;
+      aspect-ratio: 1;
+      object-fit: cover;
+    }
+    & p {
+      font-size: 24px;
+      font-weight: 600;
+    }
   }
 </style>

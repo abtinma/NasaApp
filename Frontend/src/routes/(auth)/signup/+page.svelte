@@ -1,12 +1,5 @@
 <script>
-  import { onMount } from "svelte";
-  import {
-    user,
-    signInWithGoogle,
-    signOut,
-    signInWithEmail,
-    signUpWithEmail,
-  } from "$lib/auth/firebase.ts";
+  import { user, signInWithGoogle, signOut } from "$lib/auth/firebase.ts";
   import { createEventDispatcher } from "svelte";
   const dispatch = createEventDispatcher();
 
@@ -17,12 +10,12 @@
     password = "";
   }
 
-  export let username = "abtinma";
-  export let name = "abtin";
-  export let email = "abtinma@gmail.com";
-  export let password = "Hellothere";
+  export let username = "";
+  export let name = "";
+  export let email = "";
+  export let password = "";
 
-    $: validEmail = email.includes("@");
+  $: validEmail = email.includes("@");
   $: validPassword = password.length >= 8;
   $: validUsername = username.length >= 3;
   $: validName = name.length >= 1;
@@ -53,18 +46,17 @@
         if (!canSignUp) return;
         // signUpWithEmail(email, password);
         // resetInputs();
-        const response = await fetch('/api/createUser', {
-          method: 'POST',
+        const response = await fetch("/api/createUser", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             username: username,
             name: name,
             email: email,
-            uid: "jwahjdhowahdoa"
-          })
-        
+            uid: "jwahjdhowahdoa",
+          }),
         });
       }}>Sign Up</button
     >
@@ -80,9 +72,8 @@
   {/if}
 </div>
 
-
 <style>
-   .auth-btn {
+  .auth-btn {
     padding: 1rem 2rem;
     border-radius: 0.5rem;
     border: none;
@@ -121,10 +112,5 @@
       font-size: 1.5rem;
       transition: transform 0.1s ease-in-out;
     }
-  }
-  .row {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
   }
 </style>

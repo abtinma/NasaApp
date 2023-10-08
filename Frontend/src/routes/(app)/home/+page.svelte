@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { stringToColor } from "$lib/colorHelper";
 
   function getRandomElement(array) {
     return array[Math.floor(Math.random() * array.length)];
@@ -27,7 +28,7 @@
       const skillSet = new Set();
 
       // Add 2-4 random skills to each project
-      const numberOfSkills = Math.floor(Math.random() * 3) + 2;
+      const numberOfSkills = Math.floor(Math.random() * 3) + 6;
       for (let j = 0; j < numberOfSkills; j++) {
         skillSet.add(getRandomElement(skills));
       }
@@ -48,8 +49,11 @@
   let projects: any[] = [];
   onMount(() => {
     console.warn("Generating random projects");
-    projects = generateRandomProjects(40);
+    projects = generateRandomProjects(20);
   });
+
+  
+
   $: console.log(projects);
 </script>
 
@@ -62,7 +66,13 @@
         <p>{project.overview}</p>
         <div class="skills">
           {#each project.skills as skill}
-            <div class="skill">{skill}</div>
+            <div
+              class="skill"
+              style="background-color: {stringToColor(skill)
+                .bg}; color: {stringToColor(skill).text}"
+            >
+              {skill}
+            </div>
           {/each}
         </div>
       </div>
@@ -74,32 +84,32 @@
   .container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    grid-auto-rows: 1fr; 
+    grid-auto-rows: 1fr;
     height: 100%;
-    /* overflow: hidden; */
-    /* align-items: stretch; */
     gap: 8px;
     padding: 12px;
   }
   .project-container {
     display: grid;
-    grid-template-rows: 1fr 1fr;
-    justify-content: center;
-    /* border: 1px solid blue; */
-    /* height: 100%; */
+    grid-template-rows: auto 1fr;
+    /* justify-content: center; */
+    height: 100%;
     width: 100%;
-    /* flex: 1; */
-    
+
     border-radius: 16px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.22);
     aspect-ratio: 16 / 9;
     padding: 8px;
-    /* gap: 8px; */
-    /* overflow: hidden; */
-    
+    gap: 4px;
+
+   
+
+
     & img {
+      min-width: 100%;
       width: 100%;
-      height: 100%;
+      
+      /* height: 100%; */
       border-radius: 8px;
       object-fit: cover;
       aspect-ratio: 16 / 9;
@@ -110,7 +120,17 @@
     flex-wrap: wrap;
     gap: 4px;
   }
+  .skill {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
   .details {
-    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+    gap: 4px;
+    
+    
   }
 </style>

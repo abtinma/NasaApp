@@ -1,13 +1,17 @@
-interface Project {
+export interface Project {
     project_id: string;
     project_name: string;
+    project_photo: string;
     description: string;
+    brief_description: string;
+    summary: string;
+    objective: string;
     skills_needed: string[];
     collaborators_num: number;
     userId: string;
 }
 
-interface User {
+export interface User {
     name: string;
     user_id: string;
     username: string;

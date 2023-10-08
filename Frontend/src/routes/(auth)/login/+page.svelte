@@ -101,9 +101,5 @@
       transition: transform 0.1s ease-in-out;
     }
   }
-  .row {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-  }
+
 </style>

@@ -1,24 +1,12 @@
 <script>
   import { onMount } from "svelte";
-  import {
-    user,
-    signInWithGoogle,
-    signOut,
-    signInWithEmail,
-    signUpWithEmail,
-  } from "$lib/auth/firebase.ts";
-  import JupyterNotebook from "$lib/JupyterNotebook.svelte";
 
   let email = "";
   let password = "";
   let username = "";
   let name = "";
 
-  onMount(async () => {
-    // const response = await fetch("/api/test");
-    // const data = await response.json();
-    // console.log(data);
-  });
+  onMount(async () => {});
   function resetInputs() {
     email = "";
     password = "";
@@ -39,9 +27,11 @@
 </script>
 
 <div class="container">
-  <button on:click={() => {
-    sendTest()
-  }}>TEST</button>
+  <button
+    on:click={() => {
+      sendTest();
+    }}>TEST</button
+  >
 </div>
 
 <style>
@@ -51,51 +41,6 @@
     align-items: center;
     justify-content: center;
     height: 100vh;
-    gap: 10px;
-  }
-  .auth-btn {
-    padding: 1rem 2rem;
-    border-radius: 0.5rem;
-    border: none;
-    background-color: #000;
-    color: #fff;
-    font-size: 1.5rem;
-    cursor: pointer;
-    transition: transform 0.1s ease-in-out;
-  }
-  .auth-btn:active {
-    transform: scale(0.95);
-  }
-  .buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-  .divider {
-    border-bottom: 2px solid rgb(117, 117, 117);
-  }
-  .inputs-container {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-
-    & input {
-      padding: 1rem;
-      border-radius: 0.5rem;
-      background-color: #ffffff;
-      border: 2px solid #000;
-      color: #000000;
-      font-size: 1.5rem;
-      transition: transform 0.1s ease-in-out;
-    }
-  }
-  .row {
-    display: flex;
-    flex-direction: row;
     gap: 10px;
   }
 </style>
