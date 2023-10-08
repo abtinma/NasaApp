@@ -7,53 +7,61 @@
     signInWithEmail,
     signUpWithEmail,
   } from "$lib/auth/firebase.ts";
-  import JupyterNotebook from "$lib/JupyterNotebook.svelte";
+  import { createEventDispatcher } from "svelte";
+  const dispatch = createEventDispatcher();
 
-  let email = "";
-  let password = "";
-  let username = "";
-  let name = "";
-
-  onMount(async () => {
-    // const response = await fetch("/api/test");
-    // const data = await response.json();
-    // console.log(data);
-  });
   function resetInputs() {
     email = "";
     password = "";
   }
 
+  export let email = "";
+  export let password = "";
+
   $: validEmail = email.includes("@");
   $: validPassword = password.length >= 8;
-  $: validUsername = username.length >= 3;
-  $: validName = name.length >= 1;
 
-  $: canSignUp = validEmail && validPassword && validUsername && validName;
-
-  async function sendTest() {
-    const response = await fetch("/api/test");
-    const data = await response.json();
-    console.log(data);
-  }
+  $: canSignUp = validEmail && validPassword;
 </script>
 
-<div class="container">
-  <button on:click={() => {
-    sendTest()
-  }}>TEST</button>
+<div class="buttons">
+  {#if $user}
+    <button
+      class="auth-btn"
+      on:click={() => {
+        signOut();
+      }}>Sign Out</button
+    >
+  {:else}
+    <div class="inputs-container">
+      <input type="text" bind:value={email} placeholder="Email" />
+      <input type="password" bind:value={password} placeholder="Password" />
+    </div>
+
+    <button
+      class="auth-btn"
+      class:disabled={!canSignUp}
+      on:click={() => {
+        if (!canSignUp) return;
+        signInWithEmail(email, password);
+        resetInputs();
+      }}>Login</button
+    >
+
+    <div class="divider" />
+    <button
+      class="auth-btn"
+      on:click={() => {
+        signInWithGoogle();
+        resetInputs();
+      }}>Sign In With Google</button
+    >
+  {/if}
 </div>
 
+
 <style>
-  .container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    gap: 10px;
-  }
-  .auth-btn {
+   .auth-btn {
     padding: 1rem 2rem;
     border-radius: 0.5rem;
     border: none;

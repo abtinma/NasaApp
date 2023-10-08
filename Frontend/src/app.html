@@ -4,6 +4,16 @@
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width" />
+		<script src="https://unpkg.com/thebe@latest/lib/index.js"></script>
+<script type="text/x-thebe-config">
+{
+    requestKernel: true,
+    binderOptions: {
+        repo: "abtinma/thebe-binder-environment",
+        ref: "master",
+    },
+}
+</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

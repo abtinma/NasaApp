@@ -16177,18 +16177,18 @@ var require_set_cookie = __commonJS({
   }
 });
 
-// .svelte-kit/output/server/entries/fallbacks/layout.svelte.js
+// .svelte-kit/output/server/entries/pages/_layout.svelte.js
 var layout_svelte_exports = {};
 __export(layout_svelte_exports, {
   default: () => Layout
 });
 var Layout;
 var init_layout_svelte = __esm({
-  ".svelte-kit/output/server/entries/fallbacks/layout.svelte.js"() {
+  ".svelte-kit/output/server/entries/pages/_layout.svelte.js"() {
     init_shims();
     init_ssr();
     Layout = create_ssr_component(($$result, $$props, $$bindings, slots) => {
-      return `${slots.default ? slots.default({}) : ``}`;
+      return `<body>${slots.default ? slots.default({}) : ``}</body>`;
     });
   }
 });
@@ -16208,8 +16208,8 @@ var init__ = __esm({
     init_shims();
     index = 0;
     component = async () => component_cache ??= (await Promise.resolve().then(() => (init_layout_svelte(), layout_svelte_exports))).default;
-    imports = ["_app/immutable/nodes/0.18524db0.js", "_app/immutable/chunks/scheduler.e108d1fd.js", "_app/immutable/chunks/index.a21d6cee.js"];
-    stylesheets = [];
+    imports = ["_app/immutable/nodes/0.3b099533.js", "_app/immutable/chunks/scheduler.e108d1fd.js", "_app/immutable/chunks/index.a21d6cee.js"];
+    stylesheets = ["_app/immutable/assets/0.095078a2.css"];
     fonts = [];
   }
 });
@@ -16269,7 +16269,7 @@ var init__2 = __esm({
     init_shims();
     index2 = 1;
     component2 = async () => component_cache2 ??= (await Promise.resolve().then(() => (init_error_svelte(), error_svelte_exports))).default;
-    imports2 = ["_app/immutable/nodes/1.3e9841a1.js", "_app/immutable/chunks/scheduler.e108d1fd.js", "_app/immutable/chunks/index.a21d6cee.js", "_app/immutable/chunks/singletons.89de7622.js"];
+    imports2 = ["_app/immutable/nodes/1.d3814467.js", "_app/immutable/chunks/scheduler.e108d1fd.js", "_app/immutable/chunks/index.a21d6cee.js", "_app/immutable/chunks/singletons.6b2141d0.js"];
     stylesheets2 = [];
     fonts2 = [];
   }
@@ -16491,7 +16491,7 @@ var options = {
 		<div class="error">
 			<span class="status">` + status + '</span>\n			<div class="message">\n				<h1>' + message + "</h1>\n			</div>\n		</div>\n	</body>\n</html>\n"
   },
-  version_hash: "14p8dcq"
+  version_hash: "vo3omo"
 };
 function get_hooks() {
   return {};
@@ -19911,7 +19911,7 @@ var manifest = (() => {
     assets: /* @__PURE__ */ new Set(["favicon.png"]),
     mimeTypes: { ".png": "image/png" },
     _: {
-      client: { "start": "_app/immutable/entry/start.31d7e9b1.js", "app": "_app/immutable/entry/app.10d42dc8.js", "imports": ["_app/immutable/entry/start.31d7e9b1.js", "_app/immutable/chunks/scheduler.e108d1fd.js", "_app/immutable/chunks/singletons.89de7622.js", "_app/immutable/entry/app.10d42dc8.js", "_app/immutable/chunks/scheduler.e108d1fd.js", "_app/immutable/chunks/index.a21d6cee.js"], "stylesheets": [], "fonts": [] },
+      client: { "start": "_app/immutable/entry/start.de72505a.js", "app": "_app/immutable/entry/app.1fad32a3.js", "imports": ["_app/immutable/entry/start.de72505a.js", "_app/immutable/chunks/scheduler.e108d1fd.js", "_app/immutable/chunks/singletons.6b2141d0.js", "_app/immutable/entry/app.1fad32a3.js", "_app/immutable/chunks/scheduler.e108d1fd.js", "_app/immutable/chunks/index.a21d6cee.js"], "stylesheets": [], "fonts": [] },
       nodes: [
         __memo(() => Promise.resolve().then(() => (init__(), __exports))),
         __memo(() => Promise.resolve().then(() => (init__2(), __exports2))),

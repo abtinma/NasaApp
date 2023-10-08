@@ -24,9 +24,13 @@
 		"svelte": "^4.0.5",
 		"svelte-adapter-firebase": "^0.15.0",
 		"svelte-check": "^3.4.3",
+		"thebe": "^0.8.2",
 		"tslib": "^2.4.1",
 		"typescript": "^5.0.0",
 		"vite": "^4.4.2"
 	},
-	"type": "module"
+	"type": "module",
+	"dependencies": {
+		"firebase": "^10.4.0"
+	}
 }
