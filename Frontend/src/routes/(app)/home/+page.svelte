@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { stringToColor } from "$lib/colorHelper";
+  import { readProjects } from "$lib/auth/firebase.ts";
+  import { goto } from "$app/navigation";
 
   function getRandomElement(array) {
     return array[Math.floor(Math.random() * array.length)];
@@ -47,9 +49,10 @@
   }
 
   let projects: any[] = [];
-  onMount(() => {
+  onMount(async () => {
     console.warn("Generating random projects");
-    projects = generateRandomProjects(20);
+    // read from projects collection on firebase
+    projects = await readProjects();
   });
 
   
@@ -59,13 +62,16 @@
 
 <div class="container">
   {#each projects as project}
-    <div class="project-container">
-      <img src={project.photoUrl} alt="" />
+
+    <button class="project-container" on:mouseup={() => {
+      goto(`/project/${project.project_id}`)
+    }}>
+      <img src="{`https://picsum.photos/seed/${project.project_id}/320/180`}" alt="" />
       <div class="details">
-        <h3>{project.name}</h3>
-        <p>{project.overview}</p>
+        <h3>{project.project_name}</h3>
+        <p>{project.brief_description}</p>
         <div class="skills">
-          {#each project.skills as skill}
+          {#each project.skills_needed as skill}
             <div
               class="skill"
               style="background-color: {stringToColor(skill)
@@ -76,7 +82,7 @@
           {/each}
         </div>
       </div>
-    </div>
+    </button>
   {/each}
 </div>
 
@@ -92,9 +98,12 @@
   .project-container {
     display: grid;
     grid-template-rows: auto 1fr;
+    text-align: left;
     /* justify-content: center; */
     height: 100%;
     width: 100%;
+
+    cursor: pointer;
 
     border-radius: 16px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.22);
@@ -103,7 +112,7 @@
     gap: 4px;
 
    
-
+    transition: box-shadow 0.2s ease-in-out;
 
     & img {
       min-width: 100%;
@@ -113,6 +122,9 @@
       border-radius: 8px;
       object-fit: cover;
       aspect-ratio: 16 / 9;
+    }
+    &:hover {
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.42);
     }
   }
   .skills {

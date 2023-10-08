@@ -6,31 +6,45 @@
   import { messagesSvg } from "$lib/svgs";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  import { user } from "$lib/auth/firebase";
-  import { addKeywordsToUserDocument, readProjectDetails, readUserDetails } from "$lib/auth/firebase";
 
   let project: Project | null = null;
-  let projectUser = null;
 
-  let projectId: string | null = null;
+  let projectId = "nasa";
 
-  $: projectId = $page.params.projectId;
 
-  $: mounted && projectId && getProjectDetails(projectId);
 
-  async function getProjectDetails(projectId) {
-    project = await readProjectDetails(projectId);
-    projectUser = await readUserDetails(project.userId);
-    console.log(project, projectUser);
-    if (project) {
-      const skills = project.skills_needed.map((skill) => skill.toLowerCase());
-      addKeywordsToUserDocument($user.uid, [...project.extracted_keywords, ...skills])
-    }
-  }
-
-  let mounted = false;
   onMount(async () => {
-    mounted = true;
+    project = {
+      project_id: "nasa",
+      project_photo: `https://picsum.photos/seed/space/1920/1080`,
+      project_name: "Discovering what's inside a black hole",
+      brief_description:
+        "A journey to the center of the universe, a journey to the center of the mind.",
+      skills_needed: [
+        "Astrophysics",
+        "Quantum Mechanics",
+        "Data Analytics",
+        "High-Performance Computing",
+        "Scientific Visualization",
+      ],
+      description: `This project is an enthralling quest that seeks to unravel the enigma of black holes, perhaps the most mysterious objects in the universe. It promises to be a perilous but enlightening journey to the event horizon and beyond—a voyage that could either confirm or utterly dismantle our existing theories about the fabric of space-time itself!
+
+Our team comprises experts in various scientific domains, including astrophysics, quantum mechanics, and data analytics. We will employ the latest techniques in high-performance computing and scientific visualization to interpret the data we collect.
+
+In addition to advancing scientific understanding, the findings from this project could have broader implications for various technologies, including energy production and telecommunications.`,
+
+      summary: `Unveiling the Abyss aims to unlock the most arcane secrets of the universe by delving into the mysteries of black holes. This project is not just another scientific endeavor; it is a journey to the very edge of human understanding!
+
+The project will employ cutting-edge telescopes and data analytics tools to scrutinize the event horizon and the area beyond it. We aim to collect unprecedented amounts of data and interpret it using modern computational methods.`,
+
+      objective: `To collect, analyze, and interpret multi-spectral data from the event horizon of a black hole, thereby gaining unprecedented insights into its inner workings. The ultimate goal is to either confirm or refute current theories on black holes, potentially revolutionizing astrophysics.
+
+We plan to collaborate with international space agencies for data collection and will employ advanced machine learning algorithms for data analysis. Our aim is not just to expand our understanding of black holes, but also to develop new methodologies that could be beneficial for other scientific research fields.`,
+
+      collaborators_num: 314159,
+      userId: "user_id",
+      project_owner: "Null Terminators",
+    };
   });
 </script>
 
@@ -38,7 +52,7 @@
   {#if project}
     <img
       class="poster"
-      src={`https://picsum.photos/seed/${project.project_id}/1920/1080`}
+      src="/blackhole.jpg"
       alt=""
       style="--scrollY: {$scrollY}px;"
     />
@@ -68,12 +82,10 @@
         <div class="project-owner">
           <div>
             <!-- <h2 class="">Project by:</h2> -->
-            <p>{projectUser?.name ?? ""}</p>
-            <p class="members">
-              {projectUser?.username ? "@" + projectUser?.username : ""}
-            </p>
+            <p>{project.project_owner}</p>
+            <p class="members">3 members</p>
           </div>
-          <img src={projectUser?.photoURL} alt="" />
+          <img src="/pic.png" alt="" />
         </div>
         <!-- <hr> -->
         <div>
@@ -183,7 +195,7 @@
     overflow: hidden;
 
     & > img {
-      max-height: 50px;
+      max-height: 50px; 
       max-width: 50px;
       aspect-ratio: 1;
       border-radius: 50%;

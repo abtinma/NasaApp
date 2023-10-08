@@ -3,12 +3,10 @@
   import { scrollY } from "$lib/stores";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
-  import {
-    navigateBack,
-    navigateForward,
-    historyStore,
-  } from "$lib/stores.ts";
+  import { user } from "$lib/auth/firebase";
+  import { navigateBack, navigateForward, historyStore } from "$lib/stores.ts";
   import * as svgs from "$lib/svgs.js";
+  import { signOut } from "$lib/auth/firebase.ts";
 
   $: currentPage = $page.url.pathname;
 </script>
@@ -51,10 +49,18 @@
     >
     <button
       class="nav-btn"
-      class:selected={currentPage.includes("/project")}
-      on:click={() => goto("/project/nasa")}
+      class:selected={currentPage == "/project"}
+      on:click={() => goto("/project")}
       ><span class="icon">{@html svgs.folderSvg}</span>Sample Project</button
     >
+    {#if $user}
+    <button class="logout" on:click={() => {
+      signOut();
+    }}>
+      Logout
+
+    </button>
+    {/if}
   </div>
   <div
     class="right-side"
@@ -81,9 +87,13 @@
       >
       <input type="text" class="search-input" placeholder="Search" />
       <div class="icon"><span>{@html bellSvg}</span></div>
-      <div class="profile-picture">
-        <img src="/pic.png" alt="" />
-      </div>
+      {#if $user}
+        <div class="profile-picture">
+          <img src="https://picsum.photos/seed/${$user?.uid}/120/100" alt="" />
+        </div>
+      {:else}
+        <button class="nav-btn" on:click={() => goto("/login")}>Login</button>
+      {/if}
     </div>
     <slot />
   </div>
@@ -262,6 +272,24 @@
     & p {
       font-size: 24px;
       font-weight: 600;
+    }
+  }
+  .logout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    border-radius: 8px;
+    margin-top: auto;
+    background-color: rgb(237, 237, 237);
+    transition: transform 0.1s ease-in-out;
+
+    &:hover {
+      cursor: pointer;
+      background-color: rgb(232, 232, 232);
+    }
+    &:active {
+      transform: scale(0.98);
     }
   }
 </style>
