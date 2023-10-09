@@ -30,11 +30,11 @@
 </script>
 
 <div class="container">
-  <button
+  <!-- <button
     on:click={() => {
       sendTest();
     }}>TEST</button
-  >
+  > -->
 </div>
 
 <style>

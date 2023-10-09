@@ -14,24 +14,24 @@ def process_text(text):
     feature_array = np.array(vectorizer.get_feature_names_out())
     return feature_array.tolist()
 
-key = "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"
+key = "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"
 
 def extract_important_words(text):
     print("Extracting important words...", len(text))
     processed_text = process_text(text)
-    processed_text_str = ", ".join(processed_text)
+    processed_text_str = " ".join(processed_text)
     print("Processed text:", len(processed_text_str))
 
     openai.api_key = key
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": "You are a helpful assistant who is an expert in science."},
-            {"role": "user", "content": f"Identify and extract essential skills, technologies, and topics from the following project description. Prioritize terms that directly relate to the skills and technologies needed for the project: \n\n{processed_text_str}\n\nProvide these as a list of prioritized keywords. Format it as single JSON array like: " + '["term1", "term2"]' + ". Keep terms as 1 word. This array should contain a maximum of 10 terms, ordered by significance"},
+            {"role": "system", "content": "You are an expert in science and data analysis who is helping to build a database. You have to be very precise and follow instructions carefully"},
+            {"role": "user", "content": f"Your job is to identify and extract essential skills, technologies, and topics from the following project list of words. Prioritize terms that directly relate to the skills and technologies: \n\n{processed_text_str}\n\nProvide these as a list of prioritized keywords. Format it as single JSON array like: " + '["term1", "term2"]' + ". Keep terms as 1 word only. This array should contain a maximum of 5 terms, ordered by significance"},
         ],
         
         temperature=0,
-        max_tokens=256,
+        max_tokens=512,
     )
     string = response['choices'][0]['message']['content']
     return ast.literal_eval(string)
