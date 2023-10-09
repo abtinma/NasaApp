@@ -408,7 +408,7 @@ var require_util = __commonJS({
       }
       return servername;
     }
-    function deepClone(obj) {
+    function deepClone2(obj) {
       return JSON.parse(JSON.stringify(obj));
     }
     function isAsyncIterable(obj) {
@@ -667,7 +667,7 @@ var require_util = __commonJS({
       parseKeepAliveTimeout,
       destroy,
       bodyLength,
-      deepClone,
+      deepClone: deepClone2,
       ReadableStreamFrom,
       isBuffer,
       validateHandler,
@@ -12085,7 +12085,7 @@ var require_fetch = __commonJS({
       if (httpCache == null) {
         request.cache = "no-store";
       }
-      const newConnection = forceNewConnection ? "yes" : "no";
+      const newConnection2 = forceNewConnection ? "yes" : "no";
       if (request.mode === "websocket") {
       } else {
       }
@@ -15765,6 +15765,9 @@ function blank_object() {
 function run_all(fns) {
   fns.forEach(run);
 }
+function is_function(thing) {
+  return typeof thing === "function";
+}
 function safe_not_equal(a, b) {
   return a != a ? b == b : a !== b || a && typeof a === "object" || typeof a === "function";
 }
@@ -16057,6 +16060,54 @@ function writable(value, start = noop) {
     };
   }
   return { set, update, subscribe: subscribe2 };
+}
+function derived(stores, fn, initial_value) {
+  const single = !Array.isArray(stores);
+  const stores_array = single ? [stores] : stores;
+  if (!stores_array.every(Boolean)) {
+    throw new Error("derived() expects stores as input, got a falsy value");
+  }
+  const auto = fn.length < 2;
+  return readable(initial_value, (set, update) => {
+    let started = false;
+    const values = [];
+    let pending = 0;
+    let cleanup = noop;
+    const sync = () => {
+      if (pending) {
+        return;
+      }
+      cleanup();
+      const result = fn(single ? values[0] : values, set, update);
+      if (auto) {
+        set(result);
+      } else {
+        cleanup = is_function(result) ? result : noop;
+      }
+    };
+    const unsubscribers = stores_array.map(
+      (store, i) => subscribe(
+        store,
+        (value) => {
+          values[i] = value;
+          pending &= ~(1 << i);
+          if (started) {
+            sync();
+          }
+        },
+        () => {
+          pending |= 1 << i;
+        }
+      )
+    );
+    started = true;
+    sync();
+    return function stop() {
+      run_all(unsubscribers);
+      cleanup();
+      started = false;
+    };
+  });
 }
 var subscriber_queue;
 var init_index2 = __esm({
@@ -17668,11 +17719,11 @@ function openDB(name5, version5, { blocked, upgrade, blocking, terminated } = {}
       event
     ));
   }
-  openPromise.then((db2) => {
+  openPromise.then((db3) => {
     if (terminated)
-      db2.addEventListener("close", () => terminated());
+      db3.addEventListener("close", () => terminated());
     if (blocking) {
-      db2.addEventListener("versionchange", (event) => blocking(event.oldVersion, event.newVersion, event));
+      db3.addEventListener("versionchange", (event) => blocking(event.oldVersion, event.newVersion, event));
     }
   }).catch(() => {
   });
@@ -17834,10 +17885,10 @@ function registerVersion(libraryKeyOrName, version5, variant) {
 function getDbPromise() {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade: (db2, oldVersion) => {
+      upgrade: (db3, oldVersion) => {
         switch (oldVersion) {
           case 0:
-            db2.createObjectStore(STORE_NAME);
+            db3.createObjectStore(STORE_NAME);
         }
       }
     }).catch((e) => {
@@ -17850,8 +17901,8 @@ function getDbPromise() {
 }
 async function readHeartbeatsFromIndexedDB(app2) {
   try {
-    const db2 = await getDbPromise();
-    const result = await db2.transaction(STORE_NAME).objectStore(STORE_NAME).get(computeKey(app2));
+    const db3 = await getDbPromise();
+    const result = await db3.transaction(STORE_NAME).objectStore(STORE_NAME).get(computeKey(app2));
     return result;
   } catch (e) {
     if (e instanceof FirebaseError) {
@@ -17866,8 +17917,8 @@ async function readHeartbeatsFromIndexedDB(app2) {
 }
 async function writeHeartbeatsToIndexedDB(app2, heartbeatObject) {
   try {
-    const db2 = await getDbPromise();
-    const tx = db2.transaction(STORE_NAME, "readwrite");
+    const db3 = await getDbPromise();
+    const tx = db3.transaction(STORE_NAME, "readwrite");
     const objectStore = tx.objectStore(STORE_NAME);
     await objectStore.put(heartbeatObject, computeKey(app2));
     await tx.done;
@@ -31307,7 +31358,7 @@ var require_minimal = __commonJS({
       {}
     );
     util.isInteger = Number.isInteger || /* istanbul ignore next */
-    function isInteger(value) {
+    function isInteger2(value) {
       return typeof value === "number" && isFinite(value) && Math.floor(value) === value;
     };
     util.isString = function isString(value) {
@@ -32742,11 +32793,11 @@ var require_namespace = __commonJS({
     Namespace.prototype.addJSON = function addJSON(nestedJson) {
       var ns = this;
       if (nestedJson) {
-        for (var names = Object.keys(nestedJson), i = 0, nested; i < names.length; ++i) {
-          nested = nestedJson[names[i]];
+        for (var names = Object.keys(nestedJson), i = 0, nested2; i < names.length; ++i) {
+          nested2 = nestedJson[names[i]];
           ns.add(
             // most to least likely
-            (nested.fields !== void 0 ? Type.fromJSON : nested.values !== void 0 ? Enum.fromJSON : nested.methods !== void 0 ? Service.fromJSON : nested.id !== void 0 ? Field.fromJSON : Namespace.fromJSON)(names[i], nested)
+            (nested2.fields !== void 0 ? Type.fromJSON : nested2.values !== void 0 ? Enum.fromJSON : nested2.methods !== void 0 ? Service.fromJSON : nested2.id !== void 0 ? Field.fromJSON : Namespace.fromJSON)(names[i], nested2)
           );
         }
       }
@@ -32769,9 +32820,9 @@ var require_namespace = __commonJS({
         var prev = this.get(object.name);
         if (prev) {
           if (prev instanceof Namespace && object instanceof Namespace && !(prev instanceof Type || prev instanceof Service)) {
-            var nested = prev.nestedArray;
-            for (var i = 0; i < nested.length; ++i)
-              object.add(nested[i]);
+            var nested2 = prev.nestedArray;
+            for (var i = 0; i < nested2.length; ++i)
+              object.add(nested2[i]);
             this.remove(prev);
             if (!this.nested)
               this.nested = {};
@@ -32817,12 +32868,12 @@ var require_namespace = __commonJS({
       return ptr;
     };
     Namespace.prototype.resolveAll = function resolveAll() {
-      var nested = this.nestedArray, i = 0;
-      while (i < nested.length)
-        if (nested[i] instanceof Namespace)
-          nested[i++].resolveAll();
+      var nested2 = this.nestedArray, i = 0;
+      while (i < nested2.length)
+        if (nested2[i] instanceof Namespace)
+          nested2[i++].resolveAll();
         else
-          nested[i++].resolve();
+          nested2[i++].resolve();
       return this.resolve();
     };
     Namespace.prototype.lookup = function lookup(path, filterTypes, parentAlreadyChecked) {
@@ -33739,10 +33790,10 @@ var require_type = __commonJS({
           type.add(OneOf.fromJSON(names[i], json2.oneofs[names[i]]));
       if (json2.nested)
         for (names = Object.keys(json2.nested), i = 0; i < names.length; ++i) {
-          var nested = json2.nested[names[i]];
+          var nested2 = json2.nested[names[i]];
           type.add(
             // most to least likely
-            (nested.id !== void 0 ? Field.fromJSON : nested.fields !== void 0 ? Type.fromJSON : nested.values !== void 0 ? Enum.fromJSON : nested.methods !== void 0 ? Service.fromJSON : Namespace.fromJSON)(names[i], nested)
+            (nested2.id !== void 0 ? Field.fromJSON : nested2.fields !== void 0 ? Type.fromJSON : nested2.values !== void 0 ? Enum.fromJSON : nested2.methods !== void 0 ? Service.fromJSON : Namespace.fromJSON)(names[i], nested2)
           );
         }
       if (json2.extensions && json2.extensions.length)
@@ -36628,18 +36679,18 @@ var require_descriptor2 = __commonJS({
         file.syntax = syntax;
       if (!(ns instanceof Root2))
         file["package"] = ns.fullName.substring(1);
-      for (var i = 0, nested; i < ns.nestedArray.length; ++i)
-        if ((nested = ns._nestedArray[i]) instanceof Type)
-          file.messageType.push(nested.toDescriptor(syntax));
-        else if (nested instanceof Enum)
-          file.enumType.push(nested.toDescriptor());
-        else if (nested instanceof Field)
-          file.extension.push(nested.toDescriptor(syntax));
-        else if (nested instanceof Service)
-          file.service.push(nested.toDescriptor());
-        else if (nested instanceof /* plain */
+      for (var i = 0, nested2; i < ns.nestedArray.length; ++i)
+        if ((nested2 = ns._nestedArray[i]) instanceof Type)
+          file.messageType.push(nested2.toDescriptor(syntax));
+        else if (nested2 instanceof Enum)
+          file.enumType.push(nested2.toDescriptor());
+        else if (nested2 instanceof Field)
+          file.extension.push(nested2.toDescriptor(syntax));
+        else if (nested2 instanceof Service)
+          file.service.push(nested2.toDescriptor());
+        else if (nested2 instanceof /* plain */
         Namespace)
-          Root_toDescriptorRecursive(nested, files, syntax);
+          Root_toDescriptorRecursive(nested2, files, syntax);
       file.options = toDescriptorOptions(ns.options, exports2.FileOptions);
       if (file.messageType.length + file.enumType.length + file.extension.length + file.service.length)
         files.push(file);
@@ -37572,7 +37623,7 @@ var require_umd = __commonJS({
           if (value <= -TWO_PWR_63_DBL)
             return MIN_VALUE;
           if (value + 1 >= TWO_PWR_63_DBL)
-            return MAX_VALUE;
+            return MAX_VALUE2;
         }
         if (value < 0)
           return fromNumber(-value, unsigned).neg();
@@ -37644,8 +37695,8 @@ var require_umd = __commonJS({
       Long2.UONE = UONE;
       var NEG_ONE = fromInt(-1);
       Long2.NEG_ONE = NEG_ONE;
-      var MAX_VALUE = fromBits(4294967295 | 0, 2147483647 | 0, false);
-      Long2.MAX_VALUE = MAX_VALUE;
+      var MAX_VALUE2 = fromBits(4294967295 | 0, 2147483647 | 0, false);
+      Long2.MAX_VALUE = MAX_VALUE2;
       var MAX_UNSIGNED_VALUE = fromBits(4294967295 | 0, 4294967295 | 0, true);
       Long2.MAX_UNSIGNED_VALUE = MAX_UNSIGNED_VALUE;
       var MIN_VALUE = fromBits(0, 2147483648 | 0, false);
@@ -38060,7 +38111,7 @@ var require_umd = __commonJS({
           return this;
         return fromBits(this.low, this.high, true);
       };
-      LongPrototype.toBytes = function toBytes(le) {
+      LongPrototype.toBytes = function toBytes2(le) {
         return le ? this.toBytesLE() : this.toBytesBE();
       };
       LongPrototype.toBytesLE = function toBytesLE() {
@@ -38071,7 +38122,7 @@ var require_umd = __commonJS({
         var hi = this.high, lo = this.low;
         return [hi >>> 24, hi >>> 16 & 255, hi >>> 8 & 255, hi & 255, lo >>> 24, lo >>> 16 & 255, lo >>> 8 & 255, lo & 255];
       };
-      Long2.fromBytes = function fromBytes(bytes, unsigned, le) {
+      Long2.fromBytes = function fromBytes2(bytes, unsigned, le) {
         return le ? Long2.fromBytesLE(bytes, unsigned) : Long2.fromBytesBE(bytes, unsigned);
       };
       Long2.fromBytesLE = function fromBytesLE(bytes, unsigned) {
@@ -45642,6 +45693,9 @@ function setSDKVersion(version5) {
 function formatJSON(value) {
   return (0, import_util6.inspect)(value, { depth: 100 });
 }
+function getLogLevel() {
+  return logClient2.logLevel;
+}
 function logDebug(msg, ...obj) {
   if (logClient2.logLevel <= LogLevel.DEBUG) {
     const args = obj.map(argToString);
@@ -45681,6 +45735,9 @@ function hardAssert(assertion, message) {
     fail();
   }
 }
+function debugCast(obj, constructor) {
+  return obj;
+}
 function makeAuthCredentialsProvider(credentials2) {
   if (!credentials2) {
     return new EmptyAuthCredentialsProvider();
@@ -45706,8 +45763,65 @@ function primitiveComparator(left, right) {
   }
   return 0;
 }
+function arrayEquals(left, right, comparator) {
+  if (left.length !== right.length) {
+    return false;
+  }
+  return left.every((value, index16) => comparator(value, right[index16]));
+}
+function newIndexOffsetSuccessorFromReadTime(readTime, largestBatchId) {
+  const successorSeconds = readTime.toTimestamp().seconds;
+  const successorNanos = readTime.toTimestamp().nanoseconds + 1;
+  const successor = SnapshotVersion.fromTimestamp(successorNanos === 1e9 ? new Timestamp(successorSeconds + 1, 0) : new Timestamp(successorSeconds, successorNanos));
+  return new IndexOffset(successor, DocumentKey.empty(), largestBatchId);
+}
+function newIndexOffsetFromDocument(document2) {
+  return new IndexOffset(document2.readTime, document2.key, INITIAL_LARGEST_BATCH_ID);
+}
+function indexOffsetComparator(left, right) {
+  let cmp = left.readTime.compareTo(right.readTime);
+  if (cmp !== 0) {
+    return cmp;
+  }
+  cmp = DocumentKey.comparator(left.documentKey, right.documentKey);
+  if (cmp !== 0) {
+    return cmp;
+  }
+  return primitiveComparator(left.largestBatchId, right.largestBatchId);
+}
+async function ignoreIfPrimaryLeaseLoss(err) {
+  if (err.code === Code.FAILED_PRECONDITION && err.message === PRIMARY_LEASE_LOST_ERROR_MSG) {
+    logDebug("LocalStore", "Unexpectedly lost primary lease");
+  } else {
+    throw err;
+  }
+}
 function isIndexedDbTransactionError(e) {
   return e.name === "IndexedDbTransactionError";
+}
+function objectSize(obj) {
+  let count = 0;
+  for (const key2 in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key2)) {
+      count++;
+    }
+  }
+  return count;
+}
+function forEach(obj, fn) {
+  for (const key2 in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key2)) {
+      fn(key2, obj[key2]);
+    }
+  }
+}
+function isEmpty(obj) {
+  for (const key2 in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key2)) {
+      return false;
+    }
+  }
+  return true;
 }
 function decodeBase64(encoded) {
   return Buffer.from(encoded, "base64").toString("binary");
@@ -45729,6 +45843,26 @@ function uint8ArrayFromBinaryString(binaryString) {
   }
   return buffer2;
 }
+function normalizeTimestamp(date) {
+  hardAssert(!!date);
+  if (typeof date === "string") {
+    let nanos = 0;
+    const fraction = ISO_TIMESTAMP_REG_EXP.exec(date);
+    hardAssert(!!fraction);
+    if (fraction[1]) {
+      let nanoStr = fraction[1];
+      nanoStr = (nanoStr + "000000000").substr(0, 9);
+      nanos = Number(nanoStr);
+    }
+    const parsedDate = new Date(date);
+    const seconds = Math.floor(parsedDate.getTime() / 1e3);
+    return { seconds, nanos };
+  } else {
+    const seconds = normalizeNumber(date.seconds);
+    const nanos = normalizeNumber(date.nanos);
+    return { seconds, nanos };
+  }
+}
 function normalizeNumber(value) {
   if (typeof value === "number") {
     return value;
@@ -45745,17 +45879,2376 @@ function normalizeByteString(blob) {
     return ByteString.fromUint8Array(blob);
   }
 }
+function isServerTimestamp(value) {
+  var _a, _b;
+  const type = (_b = (((_a = value === null || value === void 0 ? void 0 : value.mapValue) === null || _a === void 0 ? void 0 : _a.fields) || {})[TYPE_KEY]) === null || _b === void 0 ? void 0 : _b.stringValue;
+  return type === SERVER_TIMESTAMP_SENTINEL;
+}
+function serverTimestamp$1(localWriteTime, previousValue) {
+  const mapValue = {
+    fields: {
+      [TYPE_KEY]: {
+        stringValue: SERVER_TIMESTAMP_SENTINEL
+      },
+      [LOCAL_WRITE_TIME_KEY]: {
+        timestampValue: {
+          seconds: localWriteTime.seconds,
+          nanos: localWriteTime.nanoseconds
+        }
+      }
+    }
+  };
+  if (previousValue && isServerTimestamp(previousValue)) {
+    previousValue = getPreviousValue(previousValue);
+  }
+  if (previousValue) {
+    mapValue.fields[PREVIOUS_VALUE_KEY] = previousValue;
+  }
+  return { mapValue };
+}
+function getPreviousValue(value) {
+  const previousValue = value.mapValue.fields[PREVIOUS_VALUE_KEY];
+  if (isServerTimestamp(previousValue)) {
+    return getPreviousValue(previousValue);
+  }
+  return previousValue;
+}
+function getLocalWriteTime(value) {
+  const localWriteTime = normalizeTimestamp(value.mapValue.fields[LOCAL_WRITE_TIME_KEY].timestampValue);
+  return new Timestamp(localWriteTime.seconds, localWriteTime.nanos);
+}
 function databaseIdFromApp(app2, database) {
   if (!Object.prototype.hasOwnProperty.apply(app2.options, ["projectId"])) {
     throw new FirestoreError(Code.INVALID_ARGUMENT, '"projectId" not provided in firebase.initializeApp.');
   }
   return new DatabaseId(app2.options.projectId, database);
 }
+function isNullOrUndefined(value) {
+  return value === null || value === void 0;
+}
 function isNegativeZero(value) {
   return value === 0 && 1 / value === 1 / -0;
 }
+function typeOrder(value) {
+  if ("nullValue" in value) {
+    return 0;
+  } else if ("booleanValue" in value) {
+    return 1;
+  } else if ("integerValue" in value || "doubleValue" in value) {
+    return 2;
+  } else if ("timestampValue" in value) {
+    return 3;
+  } else if ("stringValue" in value) {
+    return 5;
+  } else if ("bytesValue" in value) {
+    return 6;
+  } else if ("referenceValue" in value) {
+    return 7;
+  } else if ("geoPointValue" in value) {
+    return 8;
+  } else if ("arrayValue" in value) {
+    return 9;
+  } else if ("mapValue" in value) {
+    if (isServerTimestamp(value)) {
+      return 4;
+    } else if (isMaxValue(value)) {
+      return 9007199254740991;
+    }
+    return 10;
+  } else {
+    return fail();
+  }
+}
+function valueEquals(left, right) {
+  if (left === right) {
+    return true;
+  }
+  const leftType = typeOrder(left);
+  const rightType = typeOrder(right);
+  if (leftType !== rightType) {
+    return false;
+  }
+  switch (leftType) {
+    case 0:
+      return true;
+    case 1:
+      return left.booleanValue === right.booleanValue;
+    case 4:
+      return getLocalWriteTime(left).isEqual(getLocalWriteTime(right));
+    case 3:
+      return timestampEquals(left, right);
+    case 5:
+      return left.stringValue === right.stringValue;
+    case 6:
+      return blobEquals(left, right);
+    case 7:
+      return left.referenceValue === right.referenceValue;
+    case 8:
+      return geoPointEquals(left, right);
+    case 2:
+      return numberEquals(left, right);
+    case 9:
+      return arrayEquals(left.arrayValue.values || [], right.arrayValue.values || [], valueEquals);
+    case 10:
+      return objectEquals(left, right);
+    case 9007199254740991:
+      return true;
+    default:
+      return fail();
+  }
+}
+function timestampEquals(left, right) {
+  if (typeof left.timestampValue === "string" && typeof right.timestampValue === "string" && left.timestampValue.length === right.timestampValue.length) {
+    return left.timestampValue === right.timestampValue;
+  }
+  const leftTimestamp = normalizeTimestamp(left.timestampValue);
+  const rightTimestamp = normalizeTimestamp(right.timestampValue);
+  return leftTimestamp.seconds === rightTimestamp.seconds && leftTimestamp.nanos === rightTimestamp.nanos;
+}
+function geoPointEquals(left, right) {
+  return normalizeNumber(left.geoPointValue.latitude) === normalizeNumber(right.geoPointValue.latitude) && normalizeNumber(left.geoPointValue.longitude) === normalizeNumber(right.geoPointValue.longitude);
+}
+function blobEquals(left, right) {
+  return normalizeByteString(left.bytesValue).isEqual(normalizeByteString(right.bytesValue));
+}
+function numberEquals(left, right) {
+  if ("integerValue" in left && "integerValue" in right) {
+    return normalizeNumber(left.integerValue) === normalizeNumber(right.integerValue);
+  } else if ("doubleValue" in left && "doubleValue" in right) {
+    const n1 = normalizeNumber(left.doubleValue);
+    const n2 = normalizeNumber(right.doubleValue);
+    if (n1 === n2) {
+      return isNegativeZero(n1) === isNegativeZero(n2);
+    } else {
+      return isNaN(n1) && isNaN(n2);
+    }
+  }
+  return false;
+}
+function objectEquals(left, right) {
+  const leftMap = left.mapValue.fields || {};
+  const rightMap = right.mapValue.fields || {};
+  if (objectSize(leftMap) !== objectSize(rightMap)) {
+    return false;
+  }
+  for (const key2 in leftMap) {
+    if (leftMap.hasOwnProperty(key2)) {
+      if (rightMap[key2] === void 0 || !valueEquals(leftMap[key2], rightMap[key2])) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+function arrayValueContains(haystack, needle) {
+  return (haystack.values || []).find((v2) => valueEquals(v2, needle)) !== void 0;
+}
+function valueCompare(left, right) {
+  if (left === right) {
+    return 0;
+  }
+  const leftType = typeOrder(left);
+  const rightType = typeOrder(right);
+  if (leftType !== rightType) {
+    return primitiveComparator(leftType, rightType);
+  }
+  switch (leftType) {
+    case 0:
+    case 9007199254740991:
+      return 0;
+    case 1:
+      return primitiveComparator(left.booleanValue, right.booleanValue);
+    case 2:
+      return compareNumbers(left, right);
+    case 3:
+      return compareTimestamps(left.timestampValue, right.timestampValue);
+    case 4:
+      return compareTimestamps(getLocalWriteTime(left), getLocalWriteTime(right));
+    case 5:
+      return primitiveComparator(left.stringValue, right.stringValue);
+    case 6:
+      return compareBlobs(left.bytesValue, right.bytesValue);
+    case 7:
+      return compareReferences(left.referenceValue, right.referenceValue);
+    case 8:
+      return compareGeoPoints(left.geoPointValue, right.geoPointValue);
+    case 9:
+      return compareArrays(left.arrayValue, right.arrayValue);
+    case 10:
+      return compareMaps(left.mapValue, right.mapValue);
+    default:
+      throw fail();
+  }
+}
+function compareNumbers(left, right) {
+  const leftNumber = normalizeNumber(left.integerValue || left.doubleValue);
+  const rightNumber = normalizeNumber(right.integerValue || right.doubleValue);
+  if (leftNumber < rightNumber) {
+    return -1;
+  } else if (leftNumber > rightNumber) {
+    return 1;
+  } else if (leftNumber === rightNumber) {
+    return 0;
+  } else {
+    if (isNaN(leftNumber)) {
+      return isNaN(rightNumber) ? 0 : -1;
+    } else {
+      return 1;
+    }
+  }
+}
+function compareTimestamps(left, right) {
+  if (typeof left === "string" && typeof right === "string" && left.length === right.length) {
+    return primitiveComparator(left, right);
+  }
+  const leftTimestamp = normalizeTimestamp(left);
+  const rightTimestamp = normalizeTimestamp(right);
+  const comparison = primitiveComparator(leftTimestamp.seconds, rightTimestamp.seconds);
+  if (comparison !== 0) {
+    return comparison;
+  }
+  return primitiveComparator(leftTimestamp.nanos, rightTimestamp.nanos);
+}
+function compareReferences(leftPath, rightPath) {
+  const leftSegments = leftPath.split("/");
+  const rightSegments = rightPath.split("/");
+  for (let i = 0; i < leftSegments.length && i < rightSegments.length; i++) {
+    const comparison = primitiveComparator(leftSegments[i], rightSegments[i]);
+    if (comparison !== 0) {
+      return comparison;
+    }
+  }
+  return primitiveComparator(leftSegments.length, rightSegments.length);
+}
+function compareGeoPoints(left, right) {
+  const comparison = primitiveComparator(normalizeNumber(left.latitude), normalizeNumber(right.latitude));
+  if (comparison !== 0) {
+    return comparison;
+  }
+  return primitiveComparator(normalizeNumber(left.longitude), normalizeNumber(right.longitude));
+}
+function compareBlobs(left, right) {
+  const leftBytes = normalizeByteString(left);
+  const rightBytes = normalizeByteString(right);
+  return leftBytes.compareTo(rightBytes);
+}
+function compareArrays(left, right) {
+  const leftArray = left.values || [];
+  const rightArray = right.values || [];
+  for (let i = 0; i < leftArray.length && i < rightArray.length; ++i) {
+    const compare = valueCompare(leftArray[i], rightArray[i]);
+    if (compare) {
+      return compare;
+    }
+  }
+  return primitiveComparator(leftArray.length, rightArray.length);
+}
+function compareMaps(left, right) {
+  if (left === MAX_VALUE.mapValue && right === MAX_VALUE.mapValue) {
+    return 0;
+  } else if (left === MAX_VALUE.mapValue) {
+    return 1;
+  } else if (right === MAX_VALUE.mapValue) {
+    return -1;
+  }
+  const leftMap = left.fields || {};
+  const leftKeys = Object.keys(leftMap);
+  const rightMap = right.fields || {};
+  const rightKeys = Object.keys(rightMap);
+  leftKeys.sort();
+  rightKeys.sort();
+  for (let i = 0; i < leftKeys.length && i < rightKeys.length; ++i) {
+    const keyCompare = primitiveComparator(leftKeys[i], rightKeys[i]);
+    if (keyCompare !== 0) {
+      return keyCompare;
+    }
+    const compare = valueCompare(leftMap[leftKeys[i]], rightMap[rightKeys[i]]);
+    if (compare !== 0) {
+      return compare;
+    }
+  }
+  return primitiveComparator(leftKeys.length, rightKeys.length);
+}
+function canonicalId(value) {
+  return canonifyValue(value);
+}
+function canonifyValue(value) {
+  if ("nullValue" in value) {
+    return "null";
+  } else if ("booleanValue" in value) {
+    return "" + value.booleanValue;
+  } else if ("integerValue" in value) {
+    return "" + value.integerValue;
+  } else if ("doubleValue" in value) {
+    return "" + value.doubleValue;
+  } else if ("timestampValue" in value) {
+    return canonifyTimestamp(value.timestampValue);
+  } else if ("stringValue" in value) {
+    return value.stringValue;
+  } else if ("bytesValue" in value) {
+    return canonifyByteString(value.bytesValue);
+  } else if ("referenceValue" in value) {
+    return canonifyReference(value.referenceValue);
+  } else if ("geoPointValue" in value) {
+    return canonifyGeoPoint(value.geoPointValue);
+  } else if ("arrayValue" in value) {
+    return canonifyArray(value.arrayValue);
+  } else if ("mapValue" in value) {
+    return canonifyMap(value.mapValue);
+  } else {
+    return fail();
+  }
+}
+function canonifyByteString(byteString) {
+  return normalizeByteString(byteString).toBase64();
+}
+function canonifyTimestamp(timestamp) {
+  const normalizedTimestamp = normalizeTimestamp(timestamp);
+  return `time(${normalizedTimestamp.seconds},${normalizedTimestamp.nanos})`;
+}
+function canonifyGeoPoint(geoPoint) {
+  return `geo(${geoPoint.latitude},${geoPoint.longitude})`;
+}
+function canonifyReference(referenceValue) {
+  return DocumentKey.fromName(referenceValue).toString();
+}
+function canonifyMap(mapValue) {
+  const sortedKeys = Object.keys(mapValue.fields || {}).sort();
+  let result = "{";
+  let first = true;
+  for (const key2 of sortedKeys) {
+    if (!first) {
+      result += ",";
+    } else {
+      first = false;
+    }
+    result += `${key2}:${canonifyValue(mapValue.fields[key2])}`;
+  }
+  return result + "}";
+}
+function canonifyArray(arrayValue) {
+  let result = "[";
+  let first = true;
+  for (const value of arrayValue.values || []) {
+    if (!first) {
+      result += ",";
+    } else {
+      first = false;
+    }
+    result += canonifyValue(value);
+  }
+  return result + "]";
+}
+function isInteger(value) {
+  return !!value && "integerValue" in value;
+}
+function isDouble(value) {
+  return !!value && "doubleValue" in value;
+}
+function isNumber(value) {
+  return isInteger(value) || isDouble(value);
+}
+function isArray(value) {
+  return !!value && "arrayValue" in value;
+}
+function isNullValue(value) {
+  return !!value && "nullValue" in value;
+}
+function isNanValue(value) {
+  return !!value && "doubleValue" in value && isNaN(Number(value.doubleValue));
+}
+function isMapValue(value) {
+  return !!value && "mapValue" in value;
+}
+function deepClone(source) {
+  if (source.geoPointValue) {
+    return { geoPointValue: Object.assign({}, source.geoPointValue) };
+  } else if (source.timestampValue && typeof source.timestampValue === "object") {
+    return { timestampValue: Object.assign({}, source.timestampValue) };
+  } else if (source.mapValue) {
+    const target = { mapValue: { fields: {} } };
+    forEach(source.mapValue.fields, (key2, val) => target.mapValue.fields[key2] = deepClone(val));
+    return target;
+  } else if (source.arrayValue) {
+    const target = { arrayValue: { values: [] } };
+    for (let i = 0; i < (source.arrayValue.values || []).length; ++i) {
+      target.arrayValue.values[i] = deepClone(source.arrayValue.values[i]);
+    }
+    return target;
+  } else {
+    return Object.assign({}, source);
+  }
+}
 function isMaxValue(value) {
   return (((value.mapValue || {}).fields || {})["__type__"] || {}).stringValue === MAX_VALUE_TYPE;
+}
+function compareDocumentsByField(field, d1, d2) {
+  const v1 = d1.data.field(field);
+  const v2 = d2.data.field(field);
+  if (v1 !== null && v2 !== null) {
+    return valueCompare(v1, v2);
+  } else {
+    return fail();
+  }
+}
+function boundCompareToDocument(bound, orderBy, doc2) {
+  let comparison = 0;
+  for (let i = 0; i < bound.position.length; i++) {
+    const orderByComponent = orderBy[i];
+    const component16 = bound.position[i];
+    if (orderByComponent.field.isKeyField()) {
+      comparison = DocumentKey.comparator(DocumentKey.fromName(component16.referenceValue), doc2.key);
+    } else {
+      const docValue = doc2.data.field(orderByComponent.field);
+      comparison = valueCompare(component16, docValue);
+    }
+    if (orderByComponent.dir === "desc") {
+      comparison = comparison * -1;
+    }
+    if (comparison !== 0) {
+      break;
+    }
+  }
+  return comparison;
+}
+function boundSortsAfterDocument(bound, orderBy, doc2) {
+  const comparison = boundCompareToDocument(bound, orderBy, doc2);
+  return bound.inclusive ? comparison >= 0 : comparison > 0;
+}
+function boundSortsBeforeDocument(bound, orderBy, doc2) {
+  const comparison = boundCompareToDocument(bound, orderBy, doc2);
+  return bound.inclusive ? comparison <= 0 : comparison < 0;
+}
+function boundEquals(left, right) {
+  if (left === null) {
+    return right === null;
+  } else if (right === null) {
+    return false;
+  }
+  if (left.inclusive !== right.inclusive || left.position.length !== right.position.length) {
+    return false;
+  }
+  for (let i = 0; i < left.position.length; i++) {
+    const leftPosition = left.position[i];
+    const rightPosition = right.position[i];
+    if (!valueEquals(leftPosition, rightPosition)) {
+      return false;
+    }
+  }
+  return true;
+}
+function canonifyOrderBy(orderBy) {
+  return orderBy.field.canonicalString() + orderBy.dir;
+}
+function stringifyOrderBy(orderBy) {
+  return `${orderBy.field.canonicalString()} (${orderBy.dir})`;
+}
+function orderByEquals(left, right) {
+  return left.dir === right.dir && left.field.isEqual(right.field);
+}
+function compositeFilterIsConjunction(compositeFilter) {
+  return compositeFilter.op === "and";
+}
+function compositeFilterIsFlatConjunction(compositeFilter) {
+  return compositeFilterIsFlat(compositeFilter) && compositeFilterIsConjunction(compositeFilter);
+}
+function compositeFilterIsFlat(compositeFilter) {
+  for (const filter of compositeFilter.filters) {
+    if (filter instanceof CompositeFilter) {
+      return false;
+    }
+  }
+  return true;
+}
+function canonifyFilter(filter) {
+  if (filter instanceof FieldFilter) {
+    return filter.field.canonicalString() + filter.op.toString() + canonicalId(filter.value);
+  } else if (compositeFilterIsFlatConjunction(filter)) {
+    return filter.filters.map((filter2) => canonifyFilter(filter2)).join(",");
+  } else {
+    const canonicalIdsString = filter.filters.map((filter2) => canonifyFilter(filter2)).join(",");
+    return `${filter.op}(${canonicalIdsString})`;
+  }
+}
+function filterEquals(f1, f2) {
+  if (f1 instanceof FieldFilter) {
+    return fieldFilterEquals(f1, f2);
+  } else if (f1 instanceof CompositeFilter) {
+    return compositeFilterEquals(f1, f2);
+  } else {
+    fail();
+  }
+}
+function fieldFilterEquals(f1, f2) {
+  return f2 instanceof FieldFilter && f1.op === f2.op && f1.field.isEqual(f2.field) && valueEquals(f1.value, f2.value);
+}
+function compositeFilterEquals(f1, f2) {
+  if (f2 instanceof CompositeFilter && f1.op === f2.op && f1.filters.length === f2.filters.length) {
+    const subFiltersMatch = f1.filters.reduce((result, f1Filter, index16) => result && filterEquals(f1Filter, f2.filters[index16]), true);
+    return subFiltersMatch;
+  }
+  return false;
+}
+function stringifyFilter(filter) {
+  if (filter instanceof FieldFilter) {
+    return stringifyFieldFilter(filter);
+  } else if (filter instanceof CompositeFilter) {
+    return stringifyCompositeFilter(filter);
+  } else {
+    return "Filter";
+  }
+}
+function stringifyCompositeFilter(filter) {
+  return filter.op.toString() + ` {` + filter.getFilters().map(stringifyFilter).join(" ,") + "}";
+}
+function stringifyFieldFilter(filter) {
+  return `${filter.field.canonicalString()} ${filter.op} ${canonicalId(filter.value)}`;
+}
+function extractDocumentKeysFromArrayValue(op, value) {
+  var _a;
+  return (((_a = value.arrayValue) === null || _a === void 0 ? void 0 : _a.values) || []).map((v2) => {
+    return DocumentKey.fromName(v2.referenceValue);
+  });
+}
+function newTarget(path, collectionGroup = null, orderBy = [], filters = [], limit = null, startAt = null, endAt = null) {
+  return new TargetImpl(path, collectionGroup, orderBy, filters, limit, startAt, endAt);
+}
+function canonifyTarget(target) {
+  const targetImpl = debugCast(target);
+  if (targetImpl.memoizedCanonicalId === null) {
+    let str = targetImpl.path.canonicalString();
+    if (targetImpl.collectionGroup !== null) {
+      str += "|cg:" + targetImpl.collectionGroup;
+    }
+    str += "|f:";
+    str += targetImpl.filters.map((f) => canonifyFilter(f)).join(",");
+    str += "|ob:";
+    str += targetImpl.orderBy.map((o) => canonifyOrderBy(o)).join(",");
+    if (!isNullOrUndefined(targetImpl.limit)) {
+      str += "|l:";
+      str += targetImpl.limit;
+    }
+    if (targetImpl.startAt) {
+      str += "|lb:";
+      str += targetImpl.startAt.inclusive ? "b:" : "a:";
+      str += targetImpl.startAt.position.map((p2) => canonicalId(p2)).join(",");
+    }
+    if (targetImpl.endAt) {
+      str += "|ub:";
+      str += targetImpl.endAt.inclusive ? "a:" : "b:";
+      str += targetImpl.endAt.position.map((p2) => canonicalId(p2)).join(",");
+    }
+    targetImpl.memoizedCanonicalId = str;
+  }
+  return targetImpl.memoizedCanonicalId;
+}
+function stringifyTarget(target) {
+  let str = target.path.canonicalString();
+  if (target.collectionGroup !== null) {
+    str += " collectionGroup=" + target.collectionGroup;
+  }
+  if (target.filters.length > 0) {
+    str += `, filters: [${target.filters.map((f) => stringifyFilter(f)).join(", ")}]`;
+  }
+  if (!isNullOrUndefined(target.limit)) {
+    str += ", limit: " + target.limit;
+  }
+  if (target.orderBy.length > 0) {
+    str += `, orderBy: [${target.orderBy.map((o) => stringifyOrderBy(o)).join(", ")}]`;
+  }
+  if (target.startAt) {
+    str += ", startAt: ";
+    str += target.startAt.inclusive ? "b:" : "a:";
+    str += target.startAt.position.map((p2) => canonicalId(p2)).join(",");
+  }
+  if (target.endAt) {
+    str += ", endAt: ";
+    str += target.endAt.inclusive ? "a:" : "b:";
+    str += target.endAt.position.map((p2) => canonicalId(p2)).join(",");
+  }
+  return `Target(${str})`;
+}
+function targetEquals(left, right) {
+  if (left.limit !== right.limit) {
+    return false;
+  }
+  if (left.orderBy.length !== right.orderBy.length) {
+    return false;
+  }
+  for (let i = 0; i < left.orderBy.length; i++) {
+    if (!orderByEquals(left.orderBy[i], right.orderBy[i])) {
+      return false;
+    }
+  }
+  if (left.filters.length !== right.filters.length) {
+    return false;
+  }
+  for (let i = 0; i < left.filters.length; i++) {
+    if (!filterEquals(left.filters[i], right.filters[i])) {
+      return false;
+    }
+  }
+  if (left.collectionGroup !== right.collectionGroup) {
+    return false;
+  }
+  if (!left.path.isEqual(right.path)) {
+    return false;
+  }
+  if (!boundEquals(left.startAt, right.startAt)) {
+    return false;
+  }
+  return boundEquals(left.endAt, right.endAt);
+}
+function targetIsDocumentTarget(target) {
+  return DocumentKey.isDocumentKey(target.path) && target.collectionGroup === null && target.filters.length === 0;
+}
+function newQuery(path, collectionGroup, explicitOrderBy, filters, limit, limitType, startAt, endAt) {
+  return new QueryImpl(path, collectionGroup, explicitOrderBy, filters, limit, limitType, startAt, endAt);
+}
+function newQueryForPath(path) {
+  return new QueryImpl(path);
+}
+function asCollectionQueryAtPath(query, path) {
+  return new QueryImpl(
+    path,
+    /*collectionGroup=*/
+    null,
+    query.explicitOrderBy.slice(),
+    query.filters.slice(),
+    query.limit,
+    query.limitType,
+    query.startAt,
+    query.endAt
+  );
+}
+function queryMatchesAllDocuments(query) {
+  return query.filters.length === 0 && query.limit === null && query.startAt == null && query.endAt == null && (query.explicitOrderBy.length === 0 || query.explicitOrderBy.length === 1 && query.explicitOrderBy[0].field.isKeyField());
+}
+function getFirstOrderByField(query) {
+  return query.explicitOrderBy.length > 0 ? query.explicitOrderBy[0].field : null;
+}
+function getInequalityFilterField(query) {
+  for (const filter of query.filters) {
+    const result = filter.getFirstInequalityField();
+    if (result !== null) {
+      return result;
+    }
+  }
+  return null;
+}
+function isDocumentQuery$1(query) {
+  return DocumentKey.isDocumentKey(query.path) && query.collectionGroup === null && query.filters.length === 0;
+}
+function isCollectionGroupQuery(query) {
+  return query.collectionGroup !== null;
+}
+function queryNormalizedOrderBy(query) {
+  const queryImpl = debugCast(query);
+  if (queryImpl.memoizedNormalizedOrderBy === null) {
+    queryImpl.memoizedNormalizedOrderBy = [];
+    const inequalityField = getInequalityFilterField(queryImpl);
+    const firstOrderByField = getFirstOrderByField(queryImpl);
+    if (inequalityField !== null && firstOrderByField === null) {
+      if (!inequalityField.isKeyField()) {
+        queryImpl.memoizedNormalizedOrderBy.push(new OrderBy(inequalityField));
+      }
+      queryImpl.memoizedNormalizedOrderBy.push(new OrderBy(
+        FieldPath$1.keyField(),
+        "asc"
+        /* Direction.ASCENDING */
+      ));
+    } else {
+      let foundKeyOrdering = false;
+      for (const orderBy of queryImpl.explicitOrderBy) {
+        queryImpl.memoizedNormalizedOrderBy.push(orderBy);
+        if (orderBy.field.isKeyField()) {
+          foundKeyOrdering = true;
+        }
+      }
+      if (!foundKeyOrdering) {
+        const lastDirection = queryImpl.explicitOrderBy.length > 0 ? queryImpl.explicitOrderBy[queryImpl.explicitOrderBy.length - 1].dir : "asc";
+        queryImpl.memoizedNormalizedOrderBy.push(new OrderBy(FieldPath$1.keyField(), lastDirection));
+      }
+    }
+  }
+  return queryImpl.memoizedNormalizedOrderBy;
+}
+function queryToTarget(query) {
+  const queryImpl = debugCast(query);
+  if (!queryImpl.memoizedTarget) {
+    queryImpl.memoizedTarget = _queryToTarget(queryImpl, queryNormalizedOrderBy(query));
+  }
+  return queryImpl.memoizedTarget;
+}
+function _queryToTarget(queryImpl, orderBys) {
+  if (queryImpl.limitType === "F") {
+    return newTarget(queryImpl.path, queryImpl.collectionGroup, orderBys, queryImpl.filters, queryImpl.limit, queryImpl.startAt, queryImpl.endAt);
+  } else {
+    orderBys = orderBys.map((orderBy) => {
+      const dir = orderBy.dir === "desc" ? "asc" : "desc";
+      return new OrderBy(orderBy.field, dir);
+    });
+    const startAt = queryImpl.endAt ? new Bound(queryImpl.endAt.position, queryImpl.endAt.inclusive) : null;
+    const endAt = queryImpl.startAt ? new Bound(queryImpl.startAt.position, queryImpl.startAt.inclusive) : null;
+    return newTarget(queryImpl.path, queryImpl.collectionGroup, orderBys, queryImpl.filters, queryImpl.limit, startAt, endAt);
+  }
+}
+function queryWithLimit(query, limit, limitType) {
+  return new QueryImpl(query.path, query.collectionGroup, query.explicitOrderBy.slice(), query.filters.slice(), limit, limitType, query.startAt, query.endAt);
+}
+function queryEquals(left, right) {
+  return targetEquals(queryToTarget(left), queryToTarget(right)) && left.limitType === right.limitType;
+}
+function canonifyQuery(query) {
+  return `${canonifyTarget(queryToTarget(query))}|lt:${query.limitType}`;
+}
+function stringifyQuery(query) {
+  return `Query(target=${stringifyTarget(queryToTarget(query))}; limitType=${query.limitType})`;
+}
+function queryMatches(query, doc2) {
+  return doc2.isFoundDocument() && queryMatchesPathAndCollectionGroup(query, doc2) && queryMatchesOrderBy(query, doc2) && queryMatchesFilters(query, doc2) && queryMatchesBounds(query, doc2);
+}
+function queryMatchesPathAndCollectionGroup(query, doc2) {
+  const docPath = doc2.key.path;
+  if (query.collectionGroup !== null) {
+    return doc2.key.hasCollectionId(query.collectionGroup) && query.path.isPrefixOf(docPath);
+  } else if (DocumentKey.isDocumentKey(query.path)) {
+    return query.path.isEqual(docPath);
+  } else {
+    return query.path.isImmediateParentOf(docPath);
+  }
+}
+function queryMatchesOrderBy(query, doc2) {
+  for (const orderBy of queryNormalizedOrderBy(query)) {
+    if (!orderBy.field.isKeyField() && doc2.data.field(orderBy.field) === null) {
+      return false;
+    }
+  }
+  return true;
+}
+function queryMatchesFilters(query, doc2) {
+  for (const filter of query.filters) {
+    if (!filter.matches(doc2)) {
+      return false;
+    }
+  }
+  return true;
+}
+function queryMatchesBounds(query, doc2) {
+  if (query.startAt && !boundSortsBeforeDocument(query.startAt, queryNormalizedOrderBy(query), doc2)) {
+    return false;
+  }
+  if (query.endAt && !boundSortsAfterDocument(query.endAt, queryNormalizedOrderBy(query), doc2)) {
+    return false;
+  }
+  return true;
+}
+function queryCollectionGroup(query) {
+  return query.collectionGroup || (query.path.length % 2 === 1 ? query.path.lastSegment() : query.path.get(query.path.length - 2));
+}
+function newQueryComparator(query) {
+  return (d1, d2) => {
+    let comparedOnKeyField = false;
+    for (const orderBy of queryNormalizedOrderBy(query)) {
+      const comp = compareDocs(orderBy, d1, d2);
+      if (comp !== 0) {
+        return comp;
+      }
+      comparedOnKeyField = comparedOnKeyField || orderBy.field.isKeyField();
+    }
+    return 0;
+  };
+}
+function compareDocs(orderBy, d1, d2) {
+  const comparison = orderBy.field.isKeyField() ? DocumentKey.comparator(d1.key, d2.key) : compareDocumentsByField(orderBy.field, d1, d2);
+  switch (orderBy.dir) {
+    case "asc":
+      return comparison;
+    case "desc":
+      return -1 * comparison;
+    default:
+      return fail();
+  }
+}
+function mutableDocumentMap() {
+  return EMPTY_MUTABLE_DOCUMENT_MAP;
+}
+function documentMap(...docs) {
+  let map = EMPTY_DOCUMENT_MAP;
+  for (const doc2 of docs) {
+    map = map.insert(doc2.key, doc2);
+  }
+  return map;
+}
+function newOverlayedDocumentMap() {
+  return newDocumentKeyMap();
+}
+function convertOverlayedDocumentMapToDocumentMap(collection) {
+  let documents = EMPTY_DOCUMENT_MAP;
+  collection.forEach((k2, v2) => documents = documents.insert(k2, v2.overlayedDocument));
+  return documents;
+}
+function newOverlayMap() {
+  return newDocumentKeyMap();
+}
+function newMutationMap() {
+  return newDocumentKeyMap();
+}
+function newDocumentKeyMap() {
+  return new ObjectMap((key2) => key2.toString(), (l2, r2) => l2.isEqual(r2));
+}
+function documentKeySet(...keys) {
+  let set = EMPTY_DOCUMENT_KEY_SET;
+  for (const key2 of keys) {
+    set = set.add(key2);
+  }
+  return set;
+}
+function targetIdSet() {
+  return EMPTY_TARGET_ID_SET;
+}
+function toDouble(serializer, value) {
+  if (serializer.useProto3Json) {
+    if (isNaN(value)) {
+      return { doubleValue: "NaN" };
+    } else if (value === Infinity) {
+      return { doubleValue: "Infinity" };
+    } else if (value === -Infinity) {
+      return { doubleValue: "-Infinity" };
+    }
+  }
+  return { doubleValue: isNegativeZero(value) ? "-0" : value };
+}
+function toInteger(value) {
+  return { integerValue: "" + value };
+}
+function applyTransformOperationToLocalView(transform, previousValue, localWriteTime) {
+  if (transform instanceof ServerTimestampTransform) {
+    return serverTimestamp$1(localWriteTime, previousValue);
+  } else if (transform instanceof ArrayUnionTransformOperation) {
+    return applyArrayUnionTransformOperation(transform, previousValue);
+  } else if (transform instanceof ArrayRemoveTransformOperation) {
+    return applyArrayRemoveTransformOperation(transform, previousValue);
+  } else {
+    return applyNumericIncrementTransformOperationToLocalView(transform, previousValue);
+  }
+}
+function applyTransformOperationToRemoteDocument(transform, previousValue, transformResult) {
+  if (transform instanceof ArrayUnionTransformOperation) {
+    return applyArrayUnionTransformOperation(transform, previousValue);
+  } else if (transform instanceof ArrayRemoveTransformOperation) {
+    return applyArrayRemoveTransformOperation(transform, previousValue);
+  }
+  return transformResult;
+}
+function computeTransformOperationBaseValue(transform, previousValue) {
+  if (transform instanceof NumericIncrementTransformOperation) {
+    return isNumber(previousValue) ? previousValue : { integerValue: 0 };
+  }
+  return null;
+}
+function transformOperationEquals(left, right) {
+  if (left instanceof ArrayUnionTransformOperation && right instanceof ArrayUnionTransformOperation) {
+    return arrayEquals(left.elements, right.elements, valueEquals);
+  } else if (left instanceof ArrayRemoveTransformOperation && right instanceof ArrayRemoveTransformOperation) {
+    return arrayEquals(left.elements, right.elements, valueEquals);
+  } else if (left instanceof NumericIncrementTransformOperation && right instanceof NumericIncrementTransformOperation) {
+    return valueEquals(left.operand, right.operand);
+  }
+  return left instanceof ServerTimestampTransform && right instanceof ServerTimestampTransform;
+}
+function applyArrayUnionTransformOperation(transform, previousValue) {
+  const values = coercedFieldValuesArray(previousValue);
+  for (const toUnion of transform.elements) {
+    if (!values.some((element) => valueEquals(element, toUnion))) {
+      values.push(toUnion);
+    }
+  }
+  return { arrayValue: { values } };
+}
+function applyArrayRemoveTransformOperation(transform, previousValue) {
+  let values = coercedFieldValuesArray(previousValue);
+  for (const toRemove of transform.elements) {
+    values = values.filter((element) => !valueEquals(element, toRemove));
+  }
+  return { arrayValue: { values } };
+}
+function applyNumericIncrementTransformOperationToLocalView(transform, previousValue) {
+  const baseValue = computeTransformOperationBaseValue(transform, previousValue);
+  const sum = asNumber(baseValue) + asNumber(transform.operand);
+  if (isInteger(baseValue) && isInteger(transform.operand)) {
+    return toInteger(sum);
+  } else {
+    return toDouble(transform.serializer, sum);
+  }
+}
+function asNumber(value) {
+  return normalizeNumber(value.integerValue || value.doubleValue);
+}
+function coercedFieldValuesArray(value) {
+  return isArray(value) && value.arrayValue.values ? value.arrayValue.values.slice() : [];
+}
+function fieldTransformEquals(left, right) {
+  return left.field.isEqual(right.field) && transformOperationEquals(left.transform, right.transform);
+}
+function fieldTransformsAreEqual(left, right) {
+  if (left === void 0 && right === void 0) {
+    return true;
+  }
+  if (left && right) {
+    return arrayEquals(left, right, (l2, r2) => fieldTransformEquals(l2, r2));
+  }
+  return false;
+}
+function preconditionIsValidForDocument(precondition, document2) {
+  if (precondition.updateTime !== void 0) {
+    return document2.isFoundDocument() && document2.version.isEqual(precondition.updateTime);
+  } else if (precondition.exists !== void 0) {
+    return precondition.exists === document2.isFoundDocument();
+  } else {
+    return true;
+  }
+}
+function calculateOverlayMutation(doc2, mask) {
+  if (!doc2.hasLocalMutations || mask && mask.fields.length === 0) {
+    return null;
+  }
+  if (mask === null) {
+    if (doc2.isNoDocument()) {
+      return new DeleteMutation(doc2.key, Precondition.none());
+    } else {
+      return new SetMutation(doc2.key, doc2.data, Precondition.none());
+    }
+  } else {
+    const docValue = doc2.data;
+    const patchValue = ObjectValue.empty();
+    let maskSet = new SortedSet(FieldPath$1.comparator);
+    for (let path of mask.fields) {
+      if (!maskSet.has(path)) {
+        let value = docValue.field(path);
+        if (value === null && path.length > 1) {
+          path = path.popLast();
+          value = docValue.field(path);
+        }
+        if (value === null) {
+          patchValue.delete(path);
+        } else {
+          patchValue.set(path, value);
+        }
+        maskSet = maskSet.add(path);
+      }
+    }
+    return new PatchMutation(doc2.key, patchValue, new FieldMask(maskSet.toArray()), Precondition.none());
+  }
+}
+function mutationApplyToRemoteDocument(mutation, document2, mutationResult) {
+  if (mutation instanceof SetMutation) {
+    setMutationApplyToRemoteDocument(mutation, document2, mutationResult);
+  } else if (mutation instanceof PatchMutation) {
+    patchMutationApplyToRemoteDocument(mutation, document2, mutationResult);
+  } else {
+    deleteMutationApplyToRemoteDocument(mutation, document2, mutationResult);
+  }
+}
+function mutationApplyToLocalView(mutation, document2, previousMask, localWriteTime) {
+  if (mutation instanceof SetMutation) {
+    return setMutationApplyToLocalView(mutation, document2, previousMask, localWriteTime);
+  } else if (mutation instanceof PatchMutation) {
+    return patchMutationApplyToLocalView(mutation, document2, previousMask, localWriteTime);
+  } else {
+    return deleteMutationApplyToLocalView(mutation, document2, previousMask);
+  }
+}
+function mutationEquals(left, right) {
+  if (left.type !== right.type) {
+    return false;
+  }
+  if (!left.key.isEqual(right.key)) {
+    return false;
+  }
+  if (!left.precondition.isEqual(right.precondition)) {
+    return false;
+  }
+  if (!fieldTransformsAreEqual(left.fieldTransforms, right.fieldTransforms)) {
+    return false;
+  }
+  if (left.type === 0) {
+    return left.value.isEqual(right.value);
+  }
+  if (left.type === 1) {
+    return left.data.isEqual(right.data) && left.fieldMask.isEqual(right.fieldMask);
+  }
+  return true;
+}
+function setMutationApplyToRemoteDocument(mutation, document2, mutationResult) {
+  const newData = mutation.value.clone();
+  const transformResults = serverTransformResults(mutation.fieldTransforms, document2, mutationResult.transformResults);
+  newData.setAll(transformResults);
+  document2.convertToFoundDocument(mutationResult.version, newData).setHasCommittedMutations();
+}
+function setMutationApplyToLocalView(mutation, document2, previousMask, localWriteTime) {
+  if (!preconditionIsValidForDocument(mutation.precondition, document2)) {
+    return previousMask;
+  }
+  const newData = mutation.value.clone();
+  const transformResults = localTransformResults(mutation.fieldTransforms, localWriteTime, document2);
+  newData.setAll(transformResults);
+  document2.convertToFoundDocument(document2.version, newData).setHasLocalMutations();
+  return null;
+}
+function patchMutationApplyToRemoteDocument(mutation, document2, mutationResult) {
+  if (!preconditionIsValidForDocument(mutation.precondition, document2)) {
+    document2.convertToUnknownDocument(mutationResult.version);
+    return;
+  }
+  const transformResults = serverTransformResults(mutation.fieldTransforms, document2, mutationResult.transformResults);
+  const newData = document2.data;
+  newData.setAll(getPatch(mutation));
+  newData.setAll(transformResults);
+  document2.convertToFoundDocument(mutationResult.version, newData).setHasCommittedMutations();
+}
+function patchMutationApplyToLocalView(mutation, document2, previousMask, localWriteTime) {
+  if (!preconditionIsValidForDocument(mutation.precondition, document2)) {
+    return previousMask;
+  }
+  const transformResults = localTransformResults(mutation.fieldTransforms, localWriteTime, document2);
+  const newData = document2.data;
+  newData.setAll(getPatch(mutation));
+  newData.setAll(transformResults);
+  document2.convertToFoundDocument(document2.version, newData).setHasLocalMutations();
+  if (previousMask === null) {
+    return null;
+  }
+  return previousMask.unionWith(mutation.fieldMask.fields).unionWith(mutation.fieldTransforms.map((transform) => transform.field));
+}
+function getPatch(mutation) {
+  const result = /* @__PURE__ */ new Map();
+  mutation.fieldMask.fields.forEach((fieldPath) => {
+    if (!fieldPath.isEmpty()) {
+      const newValue = mutation.data.field(fieldPath);
+      result.set(fieldPath, newValue);
+    }
+  });
+  return result;
+}
+function serverTransformResults(fieldTransforms, mutableDocument, serverTransformResults2) {
+  const transformResults = /* @__PURE__ */ new Map();
+  hardAssert(fieldTransforms.length === serverTransformResults2.length);
+  for (let i = 0; i < serverTransformResults2.length; i++) {
+    const fieldTransform = fieldTransforms[i];
+    const transform = fieldTransform.transform;
+    const previousValue = mutableDocument.data.field(fieldTransform.field);
+    transformResults.set(fieldTransform.field, applyTransformOperationToRemoteDocument(transform, previousValue, serverTransformResults2[i]));
+  }
+  return transformResults;
+}
+function localTransformResults(fieldTransforms, localWriteTime, mutableDocument) {
+  const transformResults = /* @__PURE__ */ new Map();
+  for (const fieldTransform of fieldTransforms) {
+    const transform = fieldTransform.transform;
+    const previousValue = mutableDocument.data.field(fieldTransform.field);
+    transformResults.set(fieldTransform.field, applyTransformOperationToLocalView(transform, previousValue, localWriteTime));
+  }
+  return transformResults;
+}
+function deleteMutationApplyToRemoteDocument(mutation, document2, mutationResult) {
+  document2.convertToNoDocument(mutationResult.version).setHasCommittedMutations();
+}
+function deleteMutationApplyToLocalView(mutation, document2, previousMask) {
+  if (preconditionIsValidForDocument(mutation.precondition, document2)) {
+    document2.convertToNoDocument(document2.version).setHasLocalMutations();
+    return null;
+  }
+  return previousMask;
+}
+function mapCodeFromRpcCode(code) {
+  if (code === void 0) {
+    logError("GRPC error has no .code");
+    return Code.UNKNOWN;
+  }
+  switch (code) {
+    case RpcCode.OK:
+      return Code.OK;
+    case RpcCode.CANCELLED:
+      return Code.CANCELLED;
+    case RpcCode.UNKNOWN:
+      return Code.UNKNOWN;
+    case RpcCode.DEADLINE_EXCEEDED:
+      return Code.DEADLINE_EXCEEDED;
+    case RpcCode.RESOURCE_EXHAUSTED:
+      return Code.RESOURCE_EXHAUSTED;
+    case RpcCode.INTERNAL:
+      return Code.INTERNAL;
+    case RpcCode.UNAVAILABLE:
+      return Code.UNAVAILABLE;
+    case RpcCode.UNAUTHENTICATED:
+      return Code.UNAUTHENTICATED;
+    case RpcCode.INVALID_ARGUMENT:
+      return Code.INVALID_ARGUMENT;
+    case RpcCode.NOT_FOUND:
+      return Code.NOT_FOUND;
+    case RpcCode.ALREADY_EXISTS:
+      return Code.ALREADY_EXISTS;
+    case RpcCode.PERMISSION_DENIED:
+      return Code.PERMISSION_DENIED;
+    case RpcCode.FAILED_PRECONDITION:
+      return Code.FAILED_PRECONDITION;
+    case RpcCode.ABORTED:
+      return Code.ABORTED;
+    case RpcCode.OUT_OF_RANGE:
+      return Code.OUT_OF_RANGE;
+    case RpcCode.UNIMPLEMENTED:
+      return Code.UNIMPLEMENTED;
+    case RpcCode.DATA_LOSS:
+      return Code.DATA_LOSS;
+    default:
+      return fail();
+  }
+}
+function newTextEncoder() {
+  return new import_util6.TextEncoder();
+}
+function getMd5HashValue(value) {
+  const encodedValue = newTextEncoder().encode(value);
+  const md5 = new Md5();
+  md5.update(encodedValue);
+  return new Uint8Array(md5.digest());
+}
+function get64BitUints(Bytes2) {
+  const dataView = new DataView(Bytes2.buffer);
+  const chunk1 = dataView.getUint32(
+    0,
+    /* littleEndian= */
+    true
+  );
+  const chunk2 = dataView.getUint32(
+    4,
+    /* littleEndian= */
+    true
+  );
+  const chunk3 = dataView.getUint32(
+    8,
+    /* littleEndian= */
+    true
+  );
+  const chunk4 = dataView.getUint32(
+    12,
+    /* littleEndian= */
+    true
+  );
+  const integer1 = new Integer([chunk1, chunk2], 0);
+  const integer2 = new Integer([chunk3, chunk4], 0);
+  return [integer1, integer2];
+}
+function documentTargetMap() {
+  return new SortedMap(DocumentKey.comparator);
+}
+function snapshotChangesMap() {
+  return new SortedMap(DocumentKey.comparator);
+}
+function createExistenceFilterMismatchInfoForTestingHooks(localCacheCount, existenceFilter, databaseId, bloomFilter, bloomFilterStatus) {
+  var _a, _b, _c, _d, _e, _f;
+  const result = {
+    localCacheCount,
+    existenceFilterCount: existenceFilter.count,
+    databaseId: databaseId.database,
+    projectId: databaseId.projectId
+  };
+  const unchangedNames = existenceFilter.unchangedNames;
+  if (unchangedNames) {
+    result.bloomFilter = {
+      applied: bloomFilterStatus === 0,
+      hashCount: (_a = unchangedNames === null || unchangedNames === void 0 ? void 0 : unchangedNames.hashCount) !== null && _a !== void 0 ? _a : 0,
+      bitmapLength: (_d = (_c = (_b = unchangedNames === null || unchangedNames === void 0 ? void 0 : unchangedNames.bits) === null || _b === void 0 ? void 0 : _b.bitmap) === null || _c === void 0 ? void 0 : _c.length) !== null && _d !== void 0 ? _d : 0,
+      padding: (_f = (_e = unchangedNames === null || unchangedNames === void 0 ? void 0 : unchangedNames.bits) === null || _e === void 0 ? void 0 : _e.padding) !== null && _f !== void 0 ? _f : 0,
+      mightContain: (value) => {
+        var _a2;
+        return (_a2 = bloomFilter === null || bloomFilter === void 0 ? void 0 : bloomFilter.mightContain(value)) !== null && _a2 !== void 0 ? _a2 : false;
+      }
+    };
+  }
+  return result;
+}
+function assertPresent(value, description) {
+}
+function fromRpcStatus(status) {
+  const code = status.code === void 0 ? Code.UNKNOWN : mapCodeFromRpcCode(status.code);
+  return new FirestoreError(code, status.message || "");
+}
+function toInt32Proto(serializer, val) {
+  if (serializer.useProto3Json || isNullOrUndefined(val)) {
+    return val;
+  } else {
+    return { value: val };
+  }
+}
+function fromInt32Proto(val) {
+  let result;
+  if (typeof val === "object") {
+    result = val.value;
+  } else {
+    result = val;
+  }
+  return isNullOrUndefined(result) ? null : result;
+}
+function toTimestamp(serializer, timestamp) {
+  if (serializer.useProto3Json) {
+    const jsDateStr = new Date(timestamp.seconds * 1e3).toISOString();
+    const strUntilSeconds = jsDateStr.replace(/\.\d*/, "").replace("Z", "");
+    const nanoStr = ("000000000" + timestamp.nanoseconds).slice(-9);
+    return `${strUntilSeconds}.${nanoStr}Z`;
+  } else {
+    return {
+      seconds: "" + timestamp.seconds,
+      nanos: timestamp.nanoseconds
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    };
+  }
+}
+function fromTimestamp(date) {
+  const timestamp = normalizeTimestamp(date);
+  return new Timestamp(timestamp.seconds, timestamp.nanos);
+}
+function toBytes(serializer, bytes) {
+  if (serializer.useProto3Json) {
+    return bytes.toBase64();
+  } else {
+    return bytes.toUint8Array();
+  }
+}
+function fromBytes(serializer, value) {
+  if (serializer.useProto3Json) {
+    hardAssert(value === void 0 || typeof value === "string");
+    return ByteString.fromBase64String(value ? value : "");
+  } else {
+    hardAssert(value === void 0 || value instanceof Uint8Array);
+    return ByteString.fromUint8Array(value ? value : new Uint8Array());
+  }
+}
+function fromVersion(version5) {
+  hardAssert(!!version5);
+  return SnapshotVersion.fromTimestamp(fromTimestamp(version5));
+}
+function toResourceName(databaseId, path) {
+  return fullyQualifiedPrefixPath(databaseId).child("documents").child(path).canonicalString();
+}
+function fromResourceName(name5) {
+  const resource = ResourcePath.fromString(name5);
+  hardAssert(isValidResourceName(resource));
+  return resource;
+}
+function fromName(serializer, name5) {
+  const resource = fromResourceName(name5);
+  if (resource.get(1) !== serializer.databaseId.projectId) {
+    throw new FirestoreError(Code.INVALID_ARGUMENT, "Tried to deserialize key from different project: " + resource.get(1) + " vs " + serializer.databaseId.projectId);
+  }
+  if (resource.get(3) !== serializer.databaseId.database) {
+    throw new FirestoreError(Code.INVALID_ARGUMENT, "Tried to deserialize key from different database: " + resource.get(3) + " vs " + serializer.databaseId.database);
+  }
+  return new DocumentKey(extractLocalPathFromResourceName(resource));
+}
+function toQueryPath(serializer, path) {
+  return toResourceName(serializer.databaseId, path);
+}
+function fromQueryPath(name5) {
+  const resourceName = fromResourceName(name5);
+  if (resourceName.length === 4) {
+    return ResourcePath.emptyPath();
+  }
+  return extractLocalPathFromResourceName(resourceName);
+}
+function getEncodedDatabaseId(serializer) {
+  const path = new ResourcePath([
+    "projects",
+    serializer.databaseId.projectId,
+    "databases",
+    serializer.databaseId.database
+  ]);
+  return path.canonicalString();
+}
+function fullyQualifiedPrefixPath(databaseId) {
+  return new ResourcePath([
+    "projects",
+    databaseId.projectId,
+    "databases",
+    databaseId.database
+  ]);
+}
+function extractLocalPathFromResourceName(resourceName) {
+  hardAssert(resourceName.length > 4 && resourceName.get(4) === "documents");
+  return resourceName.popFirst(5);
+}
+function fromWatchChange(serializer, change) {
+  let watchChange;
+  if ("targetChange" in change) {
+    assertPresent(change.targetChange);
+    const state = fromWatchTargetChangeState(change.targetChange.targetChangeType || "NO_CHANGE");
+    const targetIds = change.targetChange.targetIds || [];
+    const resumeToken = fromBytes(serializer, change.targetChange.resumeToken);
+    const causeProto = change.targetChange.cause;
+    const cause = causeProto && fromRpcStatus(causeProto);
+    watchChange = new WatchTargetChange(state, targetIds, resumeToken, cause || null);
+  } else if ("documentChange" in change) {
+    assertPresent(change.documentChange);
+    const entityChange = change.documentChange;
+    assertPresent(entityChange.document);
+    assertPresent(entityChange.document.name);
+    assertPresent(entityChange.document.updateTime);
+    const key2 = fromName(serializer, entityChange.document.name);
+    const version5 = fromVersion(entityChange.document.updateTime);
+    const createTime = entityChange.document.createTime ? fromVersion(entityChange.document.createTime) : SnapshotVersion.min();
+    const data = new ObjectValue({
+      mapValue: { fields: entityChange.document.fields }
+    });
+    const doc2 = MutableDocument.newFoundDocument(key2, version5, createTime, data);
+    const updatedTargetIds = entityChange.targetIds || [];
+    const removedTargetIds = entityChange.removedTargetIds || [];
+    watchChange = new DocumentWatchChange(updatedTargetIds, removedTargetIds, doc2.key, doc2);
+  } else if ("documentDelete" in change) {
+    assertPresent(change.documentDelete);
+    const docDelete = change.documentDelete;
+    assertPresent(docDelete.document);
+    const key2 = fromName(serializer, docDelete.document);
+    const version5 = docDelete.readTime ? fromVersion(docDelete.readTime) : SnapshotVersion.min();
+    const doc2 = MutableDocument.newNoDocument(key2, version5);
+    const removedTargetIds = docDelete.removedTargetIds || [];
+    watchChange = new DocumentWatchChange([], removedTargetIds, doc2.key, doc2);
+  } else if ("documentRemove" in change) {
+    assertPresent(change.documentRemove);
+    const docRemove = change.documentRemove;
+    assertPresent(docRemove.document);
+    const key2 = fromName(serializer, docRemove.document);
+    const removedTargetIds = docRemove.removedTargetIds || [];
+    watchChange = new DocumentWatchChange([], removedTargetIds, key2, null);
+  } else if ("filter" in change) {
+    assertPresent(change.filter);
+    const filter = change.filter;
+    assertPresent(filter.targetId);
+    const { count = 0, unchangedNames } = filter;
+    const existenceFilter = new ExistenceFilter(count, unchangedNames);
+    const targetId = filter.targetId;
+    watchChange = new ExistenceFilterChange(targetId, existenceFilter);
+  } else {
+    return fail();
+  }
+  return watchChange;
+}
+function fromWatchTargetChangeState(state) {
+  if (state === "NO_CHANGE") {
+    return 0;
+  } else if (state === "ADD") {
+    return 1;
+  } else if (state === "REMOVE") {
+    return 2;
+  } else if (state === "CURRENT") {
+    return 3;
+  } else if (state === "RESET") {
+    return 4;
+  } else {
+    return fail();
+  }
+}
+function versionFromListenResponse(change) {
+  if (!("targetChange" in change)) {
+    return SnapshotVersion.min();
+  }
+  const targetChange = change.targetChange;
+  if (targetChange.targetIds && targetChange.targetIds.length) {
+    return SnapshotVersion.min();
+  }
+  if (!targetChange.readTime) {
+    return SnapshotVersion.min();
+  }
+  return fromVersion(targetChange.readTime);
+}
+function toDocumentsTarget(serializer, target) {
+  return { documents: [toQueryPath(serializer, target.path)] };
+}
+function toQueryTarget(serializer, target) {
+  const result = { structuredQuery: {} };
+  const path = target.path;
+  if (target.collectionGroup !== null) {
+    result.parent = toQueryPath(serializer, path);
+    result.structuredQuery.from = [
+      {
+        collectionId: target.collectionGroup,
+        allDescendants: true
+      }
+    ];
+  } else {
+    result.parent = toQueryPath(serializer, path.popLast());
+    result.structuredQuery.from = [{ collectionId: path.lastSegment() }];
+  }
+  const where = toFilters(target.filters);
+  if (where) {
+    result.structuredQuery.where = where;
+  }
+  const orderBy = toOrder(target.orderBy);
+  if (orderBy) {
+    result.structuredQuery.orderBy = orderBy;
+  }
+  const limit = toInt32Proto(serializer, target.limit);
+  if (limit !== null) {
+    result.structuredQuery.limit = limit;
+  }
+  if (target.startAt) {
+    result.structuredQuery.startAt = toStartAtCursor(target.startAt);
+  }
+  if (target.endAt) {
+    result.structuredQuery.endAt = toEndAtCursor(target.endAt);
+  }
+  return result;
+}
+function convertQueryTargetToQuery(target) {
+  let path = fromQueryPath(target.parent);
+  const query = target.structuredQuery;
+  const fromCount = query.from ? query.from.length : 0;
+  let collectionGroup = null;
+  if (fromCount > 0) {
+    hardAssert(fromCount === 1);
+    const from = query.from[0];
+    if (from.allDescendants) {
+      collectionGroup = from.collectionId;
+    } else {
+      path = path.child(from.collectionId);
+    }
+  }
+  let filterBy = [];
+  if (query.where) {
+    filterBy = fromFilters(query.where);
+  }
+  let orderBy = [];
+  if (query.orderBy) {
+    orderBy = fromOrder(query.orderBy);
+  }
+  let limit = null;
+  if (query.limit) {
+    limit = fromInt32Proto(query.limit);
+  }
+  let startAt = null;
+  if (query.startAt) {
+    startAt = fromStartAtCursor(query.startAt);
+  }
+  let endAt = null;
+  if (query.endAt) {
+    endAt = fromEndAtCursor(query.endAt);
+  }
+  return newQuery(path, collectionGroup, orderBy, filterBy, limit, "F", startAt, endAt);
+}
+function toListenRequestLabels(serializer, targetData) {
+  const value = toLabel(targetData.purpose);
+  if (value == null) {
+    return null;
+  } else {
+    return {
+      "goog-listen-tags": value
+    };
+  }
+}
+function toLabel(purpose) {
+  switch (purpose) {
+    case "TargetPurposeListen":
+      return null;
+    case "TargetPurposeExistenceFilterMismatch":
+      return "existence-filter-mismatch";
+    case "TargetPurposeExistenceFilterMismatchBloom":
+      return "existence-filter-mismatch-bloom";
+    case "TargetPurposeLimboResolution":
+      return "limbo-document";
+    default:
+      return fail();
+  }
+}
+function toTarget(serializer, targetData) {
+  let result;
+  const target = targetData.target;
+  if (targetIsDocumentTarget(target)) {
+    result = { documents: toDocumentsTarget(serializer, target) };
+  } else {
+    result = { query: toQueryTarget(serializer, target) };
+  }
+  result.targetId = targetData.targetId;
+  if (targetData.resumeToken.approximateByteSize() > 0) {
+    result.resumeToken = toBytes(serializer, targetData.resumeToken);
+    const expectedCount = toInt32Proto(serializer, targetData.expectedCount);
+    if (expectedCount !== null) {
+      result.expectedCount = expectedCount;
+    }
+  } else if (targetData.snapshotVersion.compareTo(SnapshotVersion.min()) > 0) {
+    result.readTime = toTimestamp(serializer, targetData.snapshotVersion.toTimestamp());
+    const expectedCount = toInt32Proto(serializer, targetData.expectedCount);
+    if (expectedCount !== null) {
+      result.expectedCount = expectedCount;
+    }
+  }
+  return result;
+}
+function toFilters(filters) {
+  if (filters.length === 0) {
+    return;
+  }
+  return toFilter(CompositeFilter.create(
+    filters,
+    "and"
+    /* CompositeOperator.AND */
+  ));
+}
+function fromFilters(filter) {
+  const result = fromFilter(filter);
+  if (result instanceof CompositeFilter && compositeFilterIsFlatConjunction(result)) {
+    return result.getFilters();
+  }
+  return [result];
+}
+function fromFilter(filter) {
+  if (filter.unaryFilter !== void 0) {
+    return fromUnaryFilter(filter);
+  } else if (filter.fieldFilter !== void 0) {
+    return fromFieldFilter(filter);
+  } else if (filter.compositeFilter !== void 0) {
+    return fromCompositeFilter(filter);
+  } else {
+    return fail();
+  }
+}
+function toOrder(orderBys) {
+  if (orderBys.length === 0) {
+    return;
+  }
+  return orderBys.map((order) => toPropertyOrder(order));
+}
+function fromOrder(orderBys) {
+  return orderBys.map((order) => fromPropertyOrder(order));
+}
+function toStartAtCursor(cursor) {
+  return {
+    before: cursor.inclusive,
+    values: cursor.position
+  };
+}
+function toEndAtCursor(cursor) {
+  return {
+    before: !cursor.inclusive,
+    values: cursor.position
+  };
+}
+function fromStartAtCursor(cursor) {
+  const inclusive = !!cursor.before;
+  const position = cursor.values || [];
+  return new Bound(position, inclusive);
+}
+function fromEndAtCursor(cursor) {
+  const inclusive = !cursor.before;
+  const position = cursor.values || [];
+  return new Bound(position, inclusive);
+}
+function toDirection(dir) {
+  return DIRECTIONS[dir];
+}
+function fromDirection(dir) {
+  switch (dir) {
+    case "ASCENDING":
+      return "asc";
+    case "DESCENDING":
+      return "desc";
+    default:
+      return void 0;
+  }
+}
+function toOperatorName(op) {
+  return OPERATORS[op];
+}
+function toCompositeOperatorName(op) {
+  return COMPOSITE_OPERATORS[op];
+}
+function fromOperatorName(op) {
+  switch (op) {
+    case "EQUAL":
+      return "==";
+    case "NOT_EQUAL":
+      return "!=";
+    case "GREATER_THAN":
+      return ">";
+    case "GREATER_THAN_OR_EQUAL":
+      return ">=";
+    case "LESS_THAN":
+      return "<";
+    case "LESS_THAN_OR_EQUAL":
+      return "<=";
+    case "ARRAY_CONTAINS":
+      return "array-contains";
+    case "IN":
+      return "in";
+    case "NOT_IN":
+      return "not-in";
+    case "ARRAY_CONTAINS_ANY":
+      return "array-contains-any";
+    case "OPERATOR_UNSPECIFIED":
+      return fail();
+    default:
+      return fail();
+  }
+}
+function fromCompositeOperatorName(op) {
+  switch (op) {
+    case "AND":
+      return "and";
+    case "OR":
+      return "or";
+    default:
+      return fail();
+  }
+}
+function toFieldPathReference(path) {
+  return { fieldPath: path.canonicalString() };
+}
+function fromFieldPathReference(fieldReference) {
+  return FieldPath$1.fromServerFormat(fieldReference.fieldPath);
+}
+function toPropertyOrder(orderBy) {
+  return {
+    field: toFieldPathReference(orderBy.field),
+    direction: toDirection(orderBy.dir)
+  };
+}
+function fromPropertyOrder(orderBy) {
+  return new OrderBy(fromFieldPathReference(orderBy.field), fromDirection(orderBy.direction));
+}
+function toFilter(filter) {
+  if (filter instanceof FieldFilter) {
+    return toUnaryOrFieldFilter(filter);
+  } else if (filter instanceof CompositeFilter) {
+    return toCompositeFilter(filter);
+  } else {
+    return fail();
+  }
+}
+function toCompositeFilter(filter) {
+  const protos2 = filter.getFilters().map((filter2) => toFilter(filter2));
+  if (protos2.length === 1) {
+    return protos2[0];
+  }
+  return {
+    compositeFilter: {
+      op: toCompositeOperatorName(filter.op),
+      filters: protos2
+    }
+  };
+}
+function toUnaryOrFieldFilter(filter) {
+  if (filter.op === "==") {
+    if (isNanValue(filter.value)) {
+      return {
+        unaryFilter: {
+          field: toFieldPathReference(filter.field),
+          op: "IS_NAN"
+        }
+      };
+    } else if (isNullValue(filter.value)) {
+      return {
+        unaryFilter: {
+          field: toFieldPathReference(filter.field),
+          op: "IS_NULL"
+        }
+      };
+    }
+  } else if (filter.op === "!=") {
+    if (isNanValue(filter.value)) {
+      return {
+        unaryFilter: {
+          field: toFieldPathReference(filter.field),
+          op: "IS_NOT_NAN"
+        }
+      };
+    } else if (isNullValue(filter.value)) {
+      return {
+        unaryFilter: {
+          field: toFieldPathReference(filter.field),
+          op: "IS_NOT_NULL"
+        }
+      };
+    }
+  }
+  return {
+    fieldFilter: {
+      field: toFieldPathReference(filter.field),
+      op: toOperatorName(filter.op),
+      value: filter.value
+    }
+  };
+}
+function fromUnaryFilter(filter) {
+  switch (filter.unaryFilter.op) {
+    case "IS_NAN":
+      const nanField = fromFieldPathReference(filter.unaryFilter.field);
+      return FieldFilter.create(nanField, "==", {
+        doubleValue: NaN
+      });
+    case "IS_NULL":
+      const nullField = fromFieldPathReference(filter.unaryFilter.field);
+      return FieldFilter.create(nullField, "==", {
+        nullValue: "NULL_VALUE"
+      });
+    case "IS_NOT_NAN":
+      const notNanField = fromFieldPathReference(filter.unaryFilter.field);
+      return FieldFilter.create(notNanField, "!=", {
+        doubleValue: NaN
+      });
+    case "IS_NOT_NULL":
+      const notNullField = fromFieldPathReference(filter.unaryFilter.field);
+      return FieldFilter.create(notNullField, "!=", {
+        nullValue: "NULL_VALUE"
+      });
+    case "OPERATOR_UNSPECIFIED":
+      return fail();
+    default:
+      return fail();
+  }
+}
+function fromFieldFilter(filter) {
+  return FieldFilter.create(fromFieldPathReference(filter.fieldFilter.field), fromOperatorName(filter.fieldFilter.op), filter.fieldFilter.value);
+}
+function fromCompositeFilter(filter) {
+  return CompositeFilter.create(filter.compositeFilter.filters.map((filter2) => fromFilter(filter2)), fromCompositeOperatorName(filter.compositeFilter.op));
+}
+function isValidResourceName(path) {
+  return path.length >= 4 && path.get(0) === "projects" && path.get(2) === "databases";
+}
+function fromBundledQuery(bundledQuery) {
+  const query = convertQueryTargetToQuery({
+    parent: bundledQuery.parent,
+    structuredQuery: bundledQuery.structuredQuery
+  });
+  if (bundledQuery.limitType === "LAST") {
+    return queryWithLimit(
+      query,
+      query.limit,
+      "L"
+      /* LimitType.Last */
+    );
+  }
+  return query;
+}
+function fromProtoNamedQuery(namedQuery) {
+  return {
+    name: namedQuery.name,
+    query: fromBundledQuery(namedQuery.bundledQuery),
+    readTime: fromVersion(namedQuery.readTime)
+  };
+}
+function fromBundleMetadata(metadata) {
+  return {
+    id: metadata.id,
+    version: metadata.version,
+    createTime: fromVersion(metadata.createTime)
+  };
+}
+function documentEntryMap() {
+  return new SortedMap(DocumentKey.comparator);
+}
+function newMemoryRemoteDocumentCache(sizer) {
+  return new MemoryRemoteDocumentCacheImpl(sizer);
+}
+function newLocalStore(persistence, queryEngine, initialUser, serializer) {
+  return new LocalStoreImpl(persistence, queryEngine, initialUser, serializer);
+}
+async function localStoreHandleUserChange(localStore, user2) {
+  const localStoreImpl = debugCast(localStore);
+  const result = await localStoreImpl.persistence.runTransaction("Handle user change", "readonly", (txn) => {
+    let oldBatches;
+    return localStoreImpl.mutationQueue.getAllMutationBatches(txn).next((promisedOldBatches) => {
+      oldBatches = promisedOldBatches;
+      localStoreImpl.initializeUserComponents(user2);
+      return localStoreImpl.mutationQueue.getAllMutationBatches(txn);
+    }).next((newBatches) => {
+      const removedBatchIds = [];
+      const addedBatchIds = [];
+      let changedKeys = documentKeySet();
+      for (const batch of oldBatches) {
+        removedBatchIds.push(batch.batchId);
+        for (const mutation of batch.mutations) {
+          changedKeys = changedKeys.add(mutation.key);
+        }
+      }
+      for (const batch of newBatches) {
+        addedBatchIds.push(batch.batchId);
+        for (const mutation of batch.mutations) {
+          changedKeys = changedKeys.add(mutation.key);
+        }
+      }
+      return localStoreImpl.localDocuments.getDocuments(txn, changedKeys).next((affectedDocuments) => {
+        return {
+          affectedDocuments,
+          removedBatchIds,
+          addedBatchIds
+        };
+      });
+    });
+  });
+  return result;
+}
+function localStoreGetLastRemoteSnapshotVersion(localStore) {
+  const localStoreImpl = debugCast(localStore);
+  return localStoreImpl.persistence.runTransaction("Get last remote snapshot version", "readonly", (txn) => localStoreImpl.targetCache.getLastRemoteSnapshotVersion(txn));
+}
+function localStoreApplyRemoteEventToLocalCache(localStore, remoteEvent) {
+  const localStoreImpl = debugCast(localStore);
+  const remoteVersion = remoteEvent.snapshotVersion;
+  let newTargetDataByTargetMap = localStoreImpl.targetDataByTarget;
+  return localStoreImpl.persistence.runTransaction("Apply remote event", "readwrite-primary", (txn) => {
+    const documentBuffer = localStoreImpl.remoteDocuments.newChangeBuffer({
+      trackRemovals: true
+      // Make sure document removals show up in `getNewDocumentChanges()`
+    });
+    newTargetDataByTargetMap = localStoreImpl.targetDataByTarget;
+    const promises = [];
+    remoteEvent.targetChanges.forEach((change, targetId) => {
+      const oldTargetData = newTargetDataByTargetMap.get(targetId);
+      if (!oldTargetData) {
+        return;
+      }
+      promises.push(localStoreImpl.targetCache.removeMatchingKeys(txn, change.removedDocuments, targetId).next(() => {
+        return localStoreImpl.targetCache.addMatchingKeys(txn, change.addedDocuments, targetId);
+      }));
+      let newTargetData = oldTargetData.withSequenceNumber(txn.currentSequenceNumber);
+      if (remoteEvent.targetMismatches.get(targetId) !== null) {
+        newTargetData = newTargetData.withResumeToken(ByteString.EMPTY_BYTE_STRING, SnapshotVersion.min()).withLastLimboFreeSnapshotVersion(SnapshotVersion.min());
+      } else if (change.resumeToken.approximateByteSize() > 0) {
+        newTargetData = newTargetData.withResumeToken(change.resumeToken, remoteVersion);
+      }
+      newTargetDataByTargetMap = newTargetDataByTargetMap.insert(targetId, newTargetData);
+      if (shouldPersistTargetData(oldTargetData, newTargetData, change)) {
+        promises.push(localStoreImpl.targetCache.updateTargetData(txn, newTargetData));
+      }
+    });
+    let changedDocs = mutableDocumentMap();
+    let existenceChangedKeys = documentKeySet();
+    remoteEvent.documentUpdates.forEach((key2) => {
+      if (remoteEvent.resolvedLimboDocuments.has(key2)) {
+        promises.push(localStoreImpl.persistence.referenceDelegate.updateLimboDocument(txn, key2));
+      }
+    });
+    promises.push(populateDocumentChangeBuffer(txn, documentBuffer, remoteEvent.documentUpdates).next((result) => {
+      changedDocs = result.changedDocuments;
+      existenceChangedKeys = result.existenceChangedKeys;
+    }));
+    if (!remoteVersion.isEqual(SnapshotVersion.min())) {
+      const updateRemoteVersion = localStoreImpl.targetCache.getLastRemoteSnapshotVersion(txn).next((lastRemoteSnapshotVersion) => {
+        return localStoreImpl.targetCache.setTargetsMetadata(txn, txn.currentSequenceNumber, remoteVersion);
+      });
+      promises.push(updateRemoteVersion);
+    }
+    return PersistencePromise.waitFor(promises).next(() => documentBuffer.apply(txn)).next(() => localStoreImpl.localDocuments.getLocalViewOfDocuments(txn, changedDocs, existenceChangedKeys)).next(() => changedDocs);
+  }).then((changedDocs) => {
+    localStoreImpl.targetDataByTarget = newTargetDataByTargetMap;
+    return changedDocs;
+  });
+}
+function populateDocumentChangeBuffer(txn, documentBuffer, documents) {
+  let updatedKeys = documentKeySet();
+  let existenceChangedKeys = documentKeySet();
+  documents.forEach((k2) => updatedKeys = updatedKeys.add(k2));
+  return documentBuffer.getEntries(txn, updatedKeys).next((existingDocs) => {
+    let changedDocuments = mutableDocumentMap();
+    documents.forEach((key2, doc2) => {
+      const existingDoc = existingDocs.get(key2);
+      if (doc2.isFoundDocument() !== existingDoc.isFoundDocument()) {
+        existenceChangedKeys = existenceChangedKeys.add(key2);
+      }
+      if (doc2.isNoDocument() && doc2.version.isEqual(SnapshotVersion.min())) {
+        documentBuffer.removeEntry(key2, doc2.readTime);
+        changedDocuments = changedDocuments.insert(key2, doc2);
+      } else if (!existingDoc.isValidDocument() || doc2.version.compareTo(existingDoc.version) > 0 || doc2.version.compareTo(existingDoc.version) === 0 && existingDoc.hasPendingWrites) {
+        documentBuffer.addEntry(doc2);
+        changedDocuments = changedDocuments.insert(key2, doc2);
+      } else {
+        logDebug(LOG_TAG$b, "Ignoring outdated watch update for ", key2, ". Current version:", existingDoc.version, " Watch version:", doc2.version);
+      }
+    });
+    return { changedDocuments, existenceChangedKeys };
+  });
+}
+function shouldPersistTargetData(oldTargetData, newTargetData, change) {
+  if (oldTargetData.resumeToken.approximateByteSize() === 0) {
+    return true;
+  }
+  const timeDelta = newTargetData.snapshotVersion.toMicroseconds() - oldTargetData.snapshotVersion.toMicroseconds();
+  if (timeDelta >= RESUME_TOKEN_MAX_AGE_MICROS) {
+    return true;
+  }
+  const changes = change.addedDocuments.size + change.modifiedDocuments.size + change.removedDocuments.size;
+  return changes > 0;
+}
+async function localStoreNotifyLocalViewChanges(localStore, viewChanges) {
+  const localStoreImpl = debugCast(localStore);
+  try {
+    await localStoreImpl.persistence.runTransaction("notifyLocalViewChanges", "readwrite", (txn) => {
+      return PersistencePromise.forEach(viewChanges, (viewChange) => {
+        return PersistencePromise.forEach(viewChange.addedKeys, (key2) => localStoreImpl.persistence.referenceDelegate.addReference(txn, viewChange.targetId, key2)).next(() => PersistencePromise.forEach(viewChange.removedKeys, (key2) => localStoreImpl.persistence.referenceDelegate.removeReference(txn, viewChange.targetId, key2)));
+      });
+    });
+  } catch (e) {
+    if (isIndexedDbTransactionError(e)) {
+      logDebug(LOG_TAG$b, "Failed to update sequence numbers: " + e);
+    } else {
+      throw e;
+    }
+  }
+  for (const viewChange of viewChanges) {
+    const targetId = viewChange.targetId;
+    if (!viewChange.fromCache) {
+      const targetData = localStoreImpl.targetDataByTarget.get(targetId);
+      const lastLimboFreeSnapshotVersion = targetData.snapshotVersion;
+      const updatedTargetData = targetData.withLastLimboFreeSnapshotVersion(lastLimboFreeSnapshotVersion);
+      localStoreImpl.targetDataByTarget = localStoreImpl.targetDataByTarget.insert(targetId, updatedTargetData);
+    }
+  }
+}
+function localStoreAllocateTarget(localStore, target) {
+  const localStoreImpl = debugCast(localStore);
+  return localStoreImpl.persistence.runTransaction("Allocate target", "readwrite", (txn) => {
+    let targetData;
+    return localStoreImpl.targetCache.getTargetData(txn, target).next((cached) => {
+      if (cached) {
+        targetData = cached;
+        return PersistencePromise.resolve(targetData);
+      } else {
+        return localStoreImpl.targetCache.allocateTargetId(txn).next((targetId) => {
+          targetData = new TargetData(target, targetId, "TargetPurposeListen", txn.currentSequenceNumber);
+          return localStoreImpl.targetCache.addTargetData(txn, targetData).next(() => targetData);
+        });
+      }
+    });
+  }).then((targetData) => {
+    const cachedTargetData = localStoreImpl.targetDataByTarget.get(targetData.targetId);
+    if (cachedTargetData === null || targetData.snapshotVersion.compareTo(cachedTargetData.snapshotVersion) > 0) {
+      localStoreImpl.targetDataByTarget = localStoreImpl.targetDataByTarget.insert(targetData.targetId, targetData);
+      localStoreImpl.targetIdByTarget.set(target, targetData.targetId);
+    }
+    return targetData;
+  });
+}
+function localStoreGetTargetData(localStore, transaction, target) {
+  const localStoreImpl = debugCast(localStore);
+  const targetId = localStoreImpl.targetIdByTarget.get(target);
+  if (targetId !== void 0) {
+    return PersistencePromise.resolve(localStoreImpl.targetDataByTarget.get(targetId));
+  } else {
+    return localStoreImpl.targetCache.getTargetData(transaction, target);
+  }
+}
+async function localStoreReleaseTarget(localStore, targetId, keepPersistedTargetData) {
+  const localStoreImpl = debugCast(localStore);
+  const targetData = localStoreImpl.targetDataByTarget.get(targetId);
+  const mode = keepPersistedTargetData ? "readwrite" : "readwrite-primary";
+  try {
+    if (!keepPersistedTargetData) {
+      await localStoreImpl.persistence.runTransaction("Release target", mode, (txn) => {
+        return localStoreImpl.persistence.referenceDelegate.removeTarget(txn, targetData);
+      });
+    }
+  } catch (e) {
+    if (isIndexedDbTransactionError(e)) {
+      logDebug(LOG_TAG$b, `Failed to update sequence numbers for target ${targetId}: ${e}`);
+    } else {
+      throw e;
+    }
+  }
+  localStoreImpl.targetDataByTarget = localStoreImpl.targetDataByTarget.remove(targetId);
+  localStoreImpl.targetIdByTarget.delete(targetData.target);
+}
+function localStoreExecuteQuery(localStore, query, usePreviousResults) {
+  const localStoreImpl = debugCast(localStore);
+  let lastLimboFreeSnapshotVersion = SnapshotVersion.min();
+  let remoteKeys = documentKeySet();
+  return localStoreImpl.persistence.runTransaction(
+    "Execute query",
+    "readwrite",
+    // Use readwrite instead of readonly so indexes can be created
+    // Use readwrite instead of readonly so indexes can be created
+    (txn) => {
+      return localStoreGetTargetData(localStoreImpl, txn, queryToTarget(query)).next((targetData) => {
+        if (targetData) {
+          lastLimboFreeSnapshotVersion = targetData.lastLimboFreeSnapshotVersion;
+          return localStoreImpl.targetCache.getMatchingKeysForTargetId(txn, targetData.targetId).next((result) => {
+            remoteKeys = result;
+          });
+        }
+      }).next(() => localStoreImpl.queryEngine.getDocumentsMatchingQuery(txn, query, usePreviousResults ? lastLimboFreeSnapshotVersion : SnapshotVersion.min(), usePreviousResults ? remoteKeys : documentKeySet())).next((documents) => {
+        setMaxReadTime(localStoreImpl, queryCollectionGroup(query), documents);
+        return { documents, remoteKeys };
+      });
+    }
+  );
+}
+function setMaxReadTime(localStoreImpl, collectionGroup, changedDocs) {
+  let readTime = localStoreImpl.collectionGroupReadTime.get(collectionGroup) || SnapshotVersion.min();
+  changedDocs.forEach((_, doc2) => {
+    if (doc2.readTime.compareTo(readTime) > 0) {
+      readTime = doc2.readTime;
+    }
+  });
+  localStoreImpl.collectionGroupReadTime.set(collectionGroup, readTime);
+}
+function generateInitialUniqueDebugId() {
+  const minResult = 268435456;
+  const maxResult = 2415919104;
+  const resultRange = maxResult - minResult;
+  const resultOffset = Math.round(resultRange * Math.random());
+  return minResult + resultOffset;
+}
+function generateUniqueDebugId() {
+  if (lastUniqueDebugId === null) {
+    lastUniqueDebugId = generateInitialUniqueDebugId();
+  } else {
+    lastUniqueDebugId++;
+  }
+  return "0x" + lastUniqueDebugId.toString(16);
+}
+function nodePromise(action) {
+  return new Promise((resolve, reject) => {
+    action((error2, value) => {
+      if (error2) {
+        reject(error2);
+      } else {
+        resolve(value);
+      }
+    });
+  });
+}
+function createMetadata(databasePath, authToken, appCheckToken, appId) {
+  hardAssert(authToken === null || authToken.type === "OAuth");
+  const metadata = new grpc.Metadata();
+  if (authToken) {
+    authToken.headers.forEach((value, key2) => metadata.set(key2, value));
+  }
+  if (appCheckToken) {
+    appCheckToken.headers.forEach((value, key2) => metadata.set(key2, value));
+  }
+  if (appId) {
+    metadata.set("X-Firebase-GMPID", appId);
+  }
+  metadata.set("X-Goog-Api-Client", X_GOOG_API_CLIENT_VALUE);
+  metadata.set("Google-Cloud-Resource-Prefix", databasePath);
+  metadata.set("x-goog-request-params", databasePath);
+  return metadata;
+}
+function loadProtos() {
+  const packageDefinition = protoLoader.fromJSON(protos$1, protoLoaderOptions);
+  return grpc.loadPackageDefinition(packageDefinition);
+}
+function newConnection(databaseInfo) {
+  const protos2 = loadProtos();
+  return new GrpcConnection(protos2, databaseInfo);
+}
+function newConnectivityMonitor() {
+  return new NoopConnectivityMonitor();
+}
+function newSerializer(databaseId) {
+  return new JsonProtoSerializer(
+    databaseId,
+    /* useProto3Json= */
+    false
+  );
+}
+function newDatastore(authCredentials, appCheckCredentials, connection, serializer) {
+  return new DatastoreImpl(authCredentials, appCheckCredentials, connection, serializer);
+}
+function newPersistentWatchStream(datastore, queue, listener) {
+  const datastoreImpl = debugCast(datastore);
+  datastoreImpl.verifyInitialized();
+  return new PersistentListenStream(queue, datastoreImpl.connection, datastoreImpl.authCredentials, datastoreImpl.appCheckCredentials, datastoreImpl.serializer, listener);
+}
+function newRemoteStore(localStore, datastore, asyncQueue, onlineStateHandler, connectivityMonitor) {
+  return new RemoteStoreImpl(localStore, datastore, asyncQueue, onlineStateHandler, connectivityMonitor);
+}
+async function enableNetworkInternal(remoteStoreImpl) {
+  if (canUseNetwork(remoteStoreImpl)) {
+    for (const networkStatusHandler of remoteStoreImpl.onNetworkStatusChange) {
+      await networkStatusHandler(
+        /* enabled= */
+        true
+      );
+    }
+  }
+}
+async function disableNetworkInternal(remoteStoreImpl) {
+  for (const networkStatusHandler of remoteStoreImpl.onNetworkStatusChange) {
+    await networkStatusHandler(
+      /* enabled= */
+      false
+    );
+  }
+}
+async function remoteStoreShutdown(remoteStore) {
+  const remoteStoreImpl = debugCast(remoteStore);
+  logDebug(LOG_TAG$5, "RemoteStore shutting down.");
+  remoteStoreImpl.offlineCauses.add(
+    5
+    /* OfflineCause.Shutdown */
+  );
+  await disableNetworkInternal(remoteStoreImpl);
+  remoteStoreImpl.connectivityMonitor.shutdown();
+  remoteStoreImpl.onlineStateTracker.set(
+    "Unknown"
+    /* OnlineState.Unknown */
+  );
+}
+function remoteStoreListen(remoteStore, targetData) {
+  const remoteStoreImpl = debugCast(remoteStore);
+  if (remoteStoreImpl.listenTargets.has(targetData.targetId)) {
+    return;
+  }
+  remoteStoreImpl.listenTargets.set(targetData.targetId, targetData);
+  if (shouldStartWatchStream(remoteStoreImpl)) {
+    startWatchStream(remoteStoreImpl);
+  } else if (ensureWatchStream(remoteStoreImpl).isOpen()) {
+    sendWatchRequest(remoteStoreImpl, targetData);
+  }
+}
+function remoteStoreUnlisten(remoteStore, targetId) {
+  const remoteStoreImpl = debugCast(remoteStore);
+  const watchStream = ensureWatchStream(remoteStoreImpl);
+  remoteStoreImpl.listenTargets.delete(targetId);
+  if (watchStream.isOpen()) {
+    sendUnwatchRequest(remoteStoreImpl, targetId);
+  }
+  if (remoteStoreImpl.listenTargets.size === 0) {
+    if (watchStream.isOpen()) {
+      watchStream.markIdle();
+    } else if (canUseNetwork(remoteStoreImpl)) {
+      remoteStoreImpl.onlineStateTracker.set(
+        "Unknown"
+        /* OnlineState.Unknown */
+      );
+    }
+  }
+}
+function sendWatchRequest(remoteStoreImpl, targetData) {
+  remoteStoreImpl.watchChangeAggregator.recordPendingTargetRequest(targetData.targetId);
+  if (targetData.resumeToken.approximateByteSize() > 0 || targetData.snapshotVersion.compareTo(SnapshotVersion.min()) > 0) {
+    const expectedCount = remoteStoreImpl.remoteSyncer.getRemoteKeysForTarget(targetData.targetId).size;
+    targetData = targetData.withExpectedCount(expectedCount);
+  }
+  ensureWatchStream(remoteStoreImpl).watch(targetData);
+}
+function sendUnwatchRequest(remoteStoreImpl, targetId) {
+  remoteStoreImpl.watchChangeAggregator.recordPendingTargetRequest(targetId);
+  ensureWatchStream(remoteStoreImpl).unwatch(targetId);
+}
+function startWatchStream(remoteStoreImpl) {
+  remoteStoreImpl.watchChangeAggregator = new WatchChangeAggregator({
+    getRemoteKeysForTarget: (targetId) => remoteStoreImpl.remoteSyncer.getRemoteKeysForTarget(targetId),
+    getTargetDataForTarget: (targetId) => remoteStoreImpl.listenTargets.get(targetId) || null,
+    getDatabaseId: () => remoteStoreImpl.datastore.serializer.databaseId
+  });
+  ensureWatchStream(remoteStoreImpl).start();
+  remoteStoreImpl.onlineStateTracker.handleWatchStreamStart();
+}
+function shouldStartWatchStream(remoteStoreImpl) {
+  return canUseNetwork(remoteStoreImpl) && !ensureWatchStream(remoteStoreImpl).isStarted() && remoteStoreImpl.listenTargets.size > 0;
+}
+function canUseNetwork(remoteStore) {
+  const remoteStoreImpl = debugCast(remoteStore);
+  return remoteStoreImpl.offlineCauses.size === 0;
+}
+function cleanUpWatchStreamState(remoteStoreImpl) {
+  remoteStoreImpl.watchChangeAggregator = void 0;
+}
+async function onWatchStreamOpen(remoteStoreImpl) {
+  remoteStoreImpl.listenTargets.forEach((targetData, targetId) => {
+    sendWatchRequest(remoteStoreImpl, targetData);
+  });
+}
+async function onWatchStreamClose(remoteStoreImpl, error2) {
+  cleanUpWatchStreamState(remoteStoreImpl);
+  if (shouldStartWatchStream(remoteStoreImpl)) {
+    remoteStoreImpl.onlineStateTracker.handleWatchStreamFailure(error2);
+    startWatchStream(remoteStoreImpl);
+  } else {
+    remoteStoreImpl.onlineStateTracker.set(
+      "Unknown"
+      /* OnlineState.Unknown */
+    );
+  }
+}
+async function onWatchStreamChange(remoteStoreImpl, watchChange, snapshotVersion) {
+  remoteStoreImpl.onlineStateTracker.set(
+    "Online"
+    /* OnlineState.Online */
+  );
+  if (watchChange instanceof WatchTargetChange && watchChange.state === 2 && watchChange.cause) {
+    try {
+      await handleTargetError(remoteStoreImpl, watchChange);
+    } catch (e) {
+      logDebug(LOG_TAG$5, "Failed to remove targets %s: %s ", watchChange.targetIds.join(","), e);
+      await disableNetworkUntilRecovery(remoteStoreImpl, e);
+    }
+    return;
+  }
+  if (watchChange instanceof DocumentWatchChange) {
+    remoteStoreImpl.watchChangeAggregator.handleDocumentChange(watchChange);
+  } else if (watchChange instanceof ExistenceFilterChange) {
+    remoteStoreImpl.watchChangeAggregator.handleExistenceFilter(watchChange);
+  } else {
+    remoteStoreImpl.watchChangeAggregator.handleTargetChange(watchChange);
+  }
+  if (!snapshotVersion.isEqual(SnapshotVersion.min())) {
+    try {
+      const lastRemoteSnapshotVersion = await localStoreGetLastRemoteSnapshotVersion(remoteStoreImpl.localStore);
+      if (snapshotVersion.compareTo(lastRemoteSnapshotVersion) >= 0) {
+        await raiseWatchSnapshot(remoteStoreImpl, snapshotVersion);
+      }
+    } catch (e) {
+      logDebug(LOG_TAG$5, "Failed to raise snapshot:", e);
+      await disableNetworkUntilRecovery(remoteStoreImpl, e);
+    }
+  }
+}
+async function disableNetworkUntilRecovery(remoteStoreImpl, e, op) {
+  if (isIndexedDbTransactionError(e)) {
+    remoteStoreImpl.offlineCauses.add(
+      1
+      /* OfflineCause.IndexedDbFailed */
+    );
+    await disableNetworkInternal(remoteStoreImpl);
+    remoteStoreImpl.onlineStateTracker.set(
+      "Offline"
+      /* OnlineState.Offline */
+    );
+    if (!op) {
+      op = () => localStoreGetLastRemoteSnapshotVersion(remoteStoreImpl.localStore);
+    }
+    remoteStoreImpl.asyncQueue.enqueueRetryable(async () => {
+      logDebug(LOG_TAG$5, "Retrying IndexedDB access");
+      await op();
+      remoteStoreImpl.offlineCauses.delete(
+        1
+        /* OfflineCause.IndexedDbFailed */
+      );
+      await enableNetworkInternal(remoteStoreImpl);
+    });
+  } else {
+    throw e;
+  }
+}
+function raiseWatchSnapshot(remoteStoreImpl, snapshotVersion) {
+  const remoteEvent = remoteStoreImpl.watchChangeAggregator.createRemoteEvent(snapshotVersion);
+  remoteEvent.targetChanges.forEach((change, targetId) => {
+    if (change.resumeToken.approximateByteSize() > 0) {
+      const targetData = remoteStoreImpl.listenTargets.get(targetId);
+      if (targetData) {
+        remoteStoreImpl.listenTargets.set(targetId, targetData.withResumeToken(change.resumeToken, snapshotVersion));
+      }
+    }
+  });
+  remoteEvent.targetMismatches.forEach((targetId, targetPurpose) => {
+    const targetData = remoteStoreImpl.listenTargets.get(targetId);
+    if (!targetData) {
+      return;
+    }
+    remoteStoreImpl.listenTargets.set(targetId, targetData.withResumeToken(ByteString.EMPTY_BYTE_STRING, targetData.snapshotVersion));
+    sendUnwatchRequest(remoteStoreImpl, targetId);
+    const requestTargetData = new TargetData(targetData.target, targetId, targetPurpose, targetData.sequenceNumber);
+    sendWatchRequest(remoteStoreImpl, requestTargetData);
+  });
+  return remoteStoreImpl.remoteSyncer.applyRemoteEvent(remoteEvent);
+}
+async function handleTargetError(remoteStoreImpl, watchChange) {
+  const error2 = watchChange.cause;
+  for (const targetId of watchChange.targetIds) {
+    if (remoteStoreImpl.listenTargets.has(targetId)) {
+      await remoteStoreImpl.remoteSyncer.rejectListen(targetId, error2);
+      remoteStoreImpl.listenTargets.delete(targetId);
+      remoteStoreImpl.watchChangeAggregator.removeTarget(targetId);
+    }
+  }
+}
+async function restartNetwork(remoteStore) {
+  const remoteStoreImpl = debugCast(remoteStore);
+  remoteStoreImpl.offlineCauses.add(
+    4
+    /* OfflineCause.ConnectivityChange */
+  );
+  await disableNetworkInternal(remoteStoreImpl);
+  remoteStoreImpl.onlineStateTracker.set(
+    "Unknown"
+    /* OnlineState.Unknown */
+  );
+  remoteStoreImpl.offlineCauses.delete(
+    4
+    /* OfflineCause.ConnectivityChange */
+  );
+  await enableNetworkInternal(remoteStoreImpl);
+}
+async function remoteStoreHandleCredentialChange(remoteStore, user2) {
+  const remoteStoreImpl = debugCast(remoteStore);
+  remoteStoreImpl.asyncQueue.verifyOperationInProgress();
+  logDebug(LOG_TAG$5, "RemoteStore received new credentials");
+  const usesNetwork = canUseNetwork(remoteStoreImpl);
+  remoteStoreImpl.offlineCauses.add(
+    3
+    /* OfflineCause.CredentialChange */
+  );
+  await disableNetworkInternal(remoteStoreImpl);
+  if (usesNetwork) {
+    remoteStoreImpl.onlineStateTracker.set(
+      "Unknown"
+      /* OnlineState.Unknown */
+    );
+  }
+  await remoteStoreImpl.remoteSyncer.handleCredentialChange(user2);
+  remoteStoreImpl.offlineCauses.delete(
+    3
+    /* OfflineCause.CredentialChange */
+  );
+  await enableNetworkInternal(remoteStoreImpl);
+}
+async function remoteStoreApplyPrimaryState(remoteStore, isPrimary) {
+  const remoteStoreImpl = debugCast(remoteStore);
+  if (isPrimary) {
+    remoteStoreImpl.offlineCauses.delete(
+      2
+      /* OfflineCause.IsSecondary */
+    );
+    await enableNetworkInternal(remoteStoreImpl);
+  } else if (!isPrimary) {
+    remoteStoreImpl.offlineCauses.add(
+      2
+      /* OfflineCause.IsSecondary */
+    );
+    await disableNetworkInternal(remoteStoreImpl);
+    remoteStoreImpl.onlineStateTracker.set(
+      "Unknown"
+      /* OnlineState.Unknown */
+    );
+  }
+}
+function ensureWatchStream(remoteStoreImpl) {
+  if (!remoteStoreImpl.watchStream) {
+    remoteStoreImpl.watchStream = newPersistentWatchStream(remoteStoreImpl.datastore, remoteStoreImpl.asyncQueue, {
+      onOpen: onWatchStreamOpen.bind(null, remoteStoreImpl),
+      onClose: onWatchStreamClose.bind(null, remoteStoreImpl),
+      onWatchChange: onWatchStreamChange.bind(null, remoteStoreImpl)
+    });
+    remoteStoreImpl.onNetworkStatusChange.push(async (enabled) => {
+      if (enabled) {
+        remoteStoreImpl.watchStream.inhibitBackoff();
+        if (shouldStartWatchStream(remoteStoreImpl)) {
+          startWatchStream(remoteStoreImpl);
+        } else {
+          remoteStoreImpl.onlineStateTracker.set(
+            "Unknown"
+            /* OnlineState.Unknown */
+          );
+        }
+      } else {
+        await remoteStoreImpl.watchStream.stop();
+        cleanUpWatchStreamState(remoteStoreImpl);
+      }
+    });
+  }
+  return remoteStoreImpl.watchStream;
 }
 function wrapInUserErrorIfRecoverable(e, msg) {
   logError(LOG_TAG$4, `${msg}: ${e}`);
@@ -45765,9 +48258,458 @@ function wrapInUserErrorIfRecoverable(e, msg) {
     throw e;
   }
 }
+function newEventManager() {
+  return new EventManagerImpl();
+}
+async function eventManagerListen(eventManager, listener) {
+  const eventManagerImpl = debugCast(eventManager);
+  const query = listener.query;
+  let firstListen = false;
+  let queryInfo = eventManagerImpl.queries.get(query);
+  if (!queryInfo) {
+    firstListen = true;
+    queryInfo = new QueryListenersInfo();
+  }
+  if (firstListen) {
+    try {
+      queryInfo.viewSnap = await eventManagerImpl.onListen(query);
+    } catch (e) {
+      const firestoreError = wrapInUserErrorIfRecoverable(e, `Initialization of query '${stringifyQuery(listener.query)}' failed`);
+      listener.onError(firestoreError);
+      return;
+    }
+  }
+  eventManagerImpl.queries.set(query, queryInfo);
+  queryInfo.listeners.push(listener);
+  listener.applyOnlineStateChange(eventManagerImpl.onlineState);
+  if (queryInfo.viewSnap) {
+    const raisedEvent = listener.onViewSnapshot(queryInfo.viewSnap);
+    if (raisedEvent) {
+      raiseSnapshotsInSyncEvent(eventManagerImpl);
+    }
+  }
+}
+async function eventManagerUnlisten(eventManager, listener) {
+  const eventManagerImpl = debugCast(eventManager);
+  const query = listener.query;
+  let lastListen = false;
+  const queryInfo = eventManagerImpl.queries.get(query);
+  if (queryInfo) {
+    const i = queryInfo.listeners.indexOf(listener);
+    if (i >= 0) {
+      queryInfo.listeners.splice(i, 1);
+      lastListen = queryInfo.listeners.length === 0;
+    }
+  }
+  if (lastListen) {
+    eventManagerImpl.queries.delete(query);
+    return eventManagerImpl.onUnlisten(query);
+  }
+}
+function eventManagerOnWatchChange(eventManager, viewSnaps) {
+  const eventManagerImpl = debugCast(eventManager);
+  let raisedEvent = false;
+  for (const viewSnap of viewSnaps) {
+    const query = viewSnap.query;
+    const queryInfo = eventManagerImpl.queries.get(query);
+    if (queryInfo) {
+      for (const listener of queryInfo.listeners) {
+        if (listener.onViewSnapshot(viewSnap)) {
+          raisedEvent = true;
+        }
+      }
+      queryInfo.viewSnap = viewSnap;
+    }
+  }
+  if (raisedEvent) {
+    raiseSnapshotsInSyncEvent(eventManagerImpl);
+  }
+}
+function eventManagerOnWatchError(eventManager, query, error2) {
+  const eventManagerImpl = debugCast(eventManager);
+  const queryInfo = eventManagerImpl.queries.get(query);
+  if (queryInfo) {
+    for (const listener of queryInfo.listeners) {
+      listener.onError(error2);
+    }
+  }
+  eventManagerImpl.queries.delete(query);
+}
+function eventManagerOnOnlineStateChange(eventManager, onlineState) {
+  const eventManagerImpl = debugCast(eventManager);
+  eventManagerImpl.onlineState = onlineState;
+  let raisedEvent = false;
+  eventManagerImpl.queries.forEach((_, queryInfo) => {
+    for (const listener of queryInfo.listeners) {
+      if (listener.applyOnlineStateChange(onlineState)) {
+        raisedEvent = true;
+      }
+    }
+  });
+  if (raisedEvent) {
+    raiseSnapshotsInSyncEvent(eventManagerImpl);
+  }
+}
+function raiseSnapshotsInSyncEvent(eventManagerImpl) {
+  eventManagerImpl.snapshotsInSyncListeners.forEach((observer) => {
+    observer.next();
+  });
+}
+function compareChangeType(c1, c2) {
+  const order = (change) => {
+    switch (change) {
+      case 0:
+        return 1;
+      case 2:
+        return 2;
+      case 3:
+        return 2;
+      case 1:
+        return 0;
+      default:
+        return fail();
+    }
+  };
+  return order(c1) - order(c2);
+}
+function newSyncEngine(localStore, remoteStore, eventManager, sharedClientState, currentUser, maxConcurrentLimboResolutions, isPrimary) {
+  const syncEngine = new SyncEngineImpl(localStore, remoteStore, eventManager, sharedClientState, currentUser, maxConcurrentLimboResolutions);
+  if (isPrimary) {
+    syncEngine._isPrimaryClient = true;
+  }
+  return syncEngine;
+}
+async function syncEngineListen(syncEngine, query) {
+  const syncEngineImpl = ensureWatchCallbacks(syncEngine);
+  let targetId;
+  let viewSnapshot;
+  const queryView = syncEngineImpl.queryViewsByQuery.get(query);
+  if (queryView) {
+    targetId = queryView.targetId;
+    syncEngineImpl.sharedClientState.addLocalQueryTarget(targetId);
+    viewSnapshot = queryView.view.computeInitialSnapshot();
+  } else {
+    const targetData = await localStoreAllocateTarget(syncEngineImpl.localStore, queryToTarget(query));
+    const status = syncEngineImpl.sharedClientState.addLocalQueryTarget(targetData.targetId);
+    targetId = targetData.targetId;
+    viewSnapshot = await initializeViewAndComputeSnapshot(syncEngineImpl, query, targetId, status === "current", targetData.resumeToken);
+    if (syncEngineImpl.isPrimaryClient) {
+      remoteStoreListen(syncEngineImpl.remoteStore, targetData);
+    }
+  }
+  return viewSnapshot;
+}
+async function initializeViewAndComputeSnapshot(syncEngineImpl, query, targetId, current, resumeToken) {
+  syncEngineImpl.applyDocChanges = (queryView, changes, remoteEvent) => applyDocChanges(syncEngineImpl, queryView, changes, remoteEvent);
+  const queryResult = await localStoreExecuteQuery(
+    syncEngineImpl.localStore,
+    query,
+    /* usePreviousResults= */
+    true
+  );
+  const view = new View(query, queryResult.remoteKeys);
+  const viewDocChanges = view.computeDocChanges(queryResult.documents);
+  const synthesizedTargetChange = TargetChange.createSynthesizedTargetChangeForCurrentChange(targetId, current && syncEngineImpl.onlineState !== "Offline", resumeToken);
+  const viewChange = view.applyChanges(
+    viewDocChanges,
+    /* updateLimboDocuments= */
+    syncEngineImpl.isPrimaryClient,
+    synthesizedTargetChange
+  );
+  updateTrackedLimbos(syncEngineImpl, targetId, viewChange.limboChanges);
+  const data = new QueryView(query, targetId, view);
+  syncEngineImpl.queryViewsByQuery.set(query, data);
+  if (syncEngineImpl.queriesByTarget.has(targetId)) {
+    syncEngineImpl.queriesByTarget.get(targetId).push(query);
+  } else {
+    syncEngineImpl.queriesByTarget.set(targetId, [query]);
+  }
+  return viewChange.snapshot;
+}
+async function syncEngineUnlisten(syncEngine, query) {
+  const syncEngineImpl = debugCast(syncEngine);
+  const queryView = syncEngineImpl.queryViewsByQuery.get(query);
+  const queries = syncEngineImpl.queriesByTarget.get(queryView.targetId);
+  if (queries.length > 1) {
+    syncEngineImpl.queriesByTarget.set(queryView.targetId, queries.filter((q2) => !queryEquals(q2, query)));
+    syncEngineImpl.queryViewsByQuery.delete(query);
+    return;
+  }
+  if (syncEngineImpl.isPrimaryClient) {
+    syncEngineImpl.sharedClientState.removeLocalQueryTarget(queryView.targetId);
+    const targetRemainsActive = syncEngineImpl.sharedClientState.isActiveQueryTarget(queryView.targetId);
+    if (!targetRemainsActive) {
+      await localStoreReleaseTarget(
+        syncEngineImpl.localStore,
+        queryView.targetId,
+        /*keepPersistedTargetData=*/
+        false
+      ).then(() => {
+        syncEngineImpl.sharedClientState.clearQueryState(queryView.targetId);
+        remoteStoreUnlisten(syncEngineImpl.remoteStore, queryView.targetId);
+        removeAndCleanupTarget(syncEngineImpl, queryView.targetId);
+      }).catch(ignoreIfPrimaryLeaseLoss);
+    }
+  } else {
+    removeAndCleanupTarget(syncEngineImpl, queryView.targetId);
+    await localStoreReleaseTarget(
+      syncEngineImpl.localStore,
+      queryView.targetId,
+      /*keepPersistedTargetData=*/
+      true
+    );
+  }
+}
+async function syncEngineApplyRemoteEvent(syncEngine, remoteEvent) {
+  const syncEngineImpl = debugCast(syncEngine);
+  try {
+    const changes = await localStoreApplyRemoteEventToLocalCache(syncEngineImpl.localStore, remoteEvent);
+    remoteEvent.targetChanges.forEach((targetChange, targetId) => {
+      const limboResolution = syncEngineImpl.activeLimboResolutionsByTarget.get(targetId);
+      if (limboResolution) {
+        hardAssert(targetChange.addedDocuments.size + targetChange.modifiedDocuments.size + targetChange.removedDocuments.size <= 1);
+        if (targetChange.addedDocuments.size > 0) {
+          limboResolution.receivedDocument = true;
+        } else if (targetChange.modifiedDocuments.size > 0) {
+          hardAssert(limboResolution.receivedDocument);
+        } else if (targetChange.removedDocuments.size > 0) {
+          hardAssert(limboResolution.receivedDocument);
+          limboResolution.receivedDocument = false;
+        } else {
+        }
+      }
+    });
+    await syncEngineEmitNewSnapsAndNotifyLocalStore(syncEngineImpl, changes, remoteEvent);
+  } catch (error2) {
+    await ignoreIfPrimaryLeaseLoss(error2);
+  }
+}
+function syncEngineApplyOnlineStateChange(syncEngine, onlineState, source) {
+  const syncEngineImpl = debugCast(syncEngine);
+  if (syncEngineImpl.isPrimaryClient && source === 0 || !syncEngineImpl.isPrimaryClient && source === 1) {
+    const newViewSnapshots = [];
+    syncEngineImpl.queryViewsByQuery.forEach((query, queryView) => {
+      const viewChange = queryView.view.applyOnlineStateChange(onlineState);
+      if (viewChange.snapshot) {
+        newViewSnapshots.push(viewChange.snapshot);
+      }
+    });
+    eventManagerOnOnlineStateChange(syncEngineImpl.eventManager, onlineState);
+    if (newViewSnapshots.length) {
+      syncEngineImpl.syncEngineListener.onWatchChange(newViewSnapshots);
+    }
+    syncEngineImpl.onlineState = onlineState;
+    if (syncEngineImpl.isPrimaryClient) {
+      syncEngineImpl.sharedClientState.setOnlineState(onlineState);
+    }
+  }
+}
+async function syncEngineRejectListen(syncEngine, targetId, err) {
+  const syncEngineImpl = debugCast(syncEngine);
+  syncEngineImpl.sharedClientState.updateQueryState(targetId, "rejected", err);
+  const limboResolution = syncEngineImpl.activeLimboResolutionsByTarget.get(targetId);
+  const limboKey = limboResolution && limboResolution.key;
+  if (limboKey) {
+    let documentUpdates = new SortedMap(DocumentKey.comparator);
+    documentUpdates = documentUpdates.insert(limboKey, MutableDocument.newNoDocument(limboKey, SnapshotVersion.min()));
+    const resolvedLimboDocuments = documentKeySet().add(limboKey);
+    const event = new RemoteEvent(
+      SnapshotVersion.min(),
+      /* targetChanges= */
+      /* @__PURE__ */ new Map(),
+      /* targetMismatches= */
+      new SortedMap(primitiveComparator),
+      documentUpdates,
+      resolvedLimboDocuments
+    );
+    await syncEngineApplyRemoteEvent(syncEngineImpl, event);
+    syncEngineImpl.activeLimboTargetsByKey = syncEngineImpl.activeLimboTargetsByKey.remove(limboKey);
+    syncEngineImpl.activeLimboResolutionsByTarget.delete(targetId);
+    pumpEnqueuedLimboResolutions(syncEngineImpl);
+  } else {
+    await localStoreReleaseTarget(
+      syncEngineImpl.localStore,
+      targetId,
+      /* keepPersistedTargetData */
+      false
+    ).then(() => removeAndCleanupTarget(syncEngineImpl, targetId, err)).catch(ignoreIfPrimaryLeaseLoss);
+  }
+}
+function rejectOutstandingPendingWritesCallbacks(syncEngineImpl, errorMessage) {
+  syncEngineImpl.pendingWritesCallbacks.forEach((callbacks) => {
+    callbacks.forEach((callback) => {
+      callback.reject(new FirestoreError(Code.CANCELLED, errorMessage));
+    });
+  });
+  syncEngineImpl.pendingWritesCallbacks.clear();
+}
+function removeAndCleanupTarget(syncEngineImpl, targetId, error2 = null) {
+  syncEngineImpl.sharedClientState.removeLocalQueryTarget(targetId);
+  for (const query of syncEngineImpl.queriesByTarget.get(targetId)) {
+    syncEngineImpl.queryViewsByQuery.delete(query);
+    if (error2) {
+      syncEngineImpl.syncEngineListener.onWatchError(query, error2);
+    }
+  }
+  syncEngineImpl.queriesByTarget.delete(targetId);
+  if (syncEngineImpl.isPrimaryClient) {
+    const limboKeys = syncEngineImpl.limboDocumentRefs.removeReferencesForId(targetId);
+    limboKeys.forEach((limboKey) => {
+      const isReferenced = syncEngineImpl.limboDocumentRefs.containsKey(limboKey);
+      if (!isReferenced) {
+        removeLimboTarget(syncEngineImpl, limboKey);
+      }
+    });
+  }
+}
+function removeLimboTarget(syncEngineImpl, key2) {
+  syncEngineImpl.enqueuedLimboResolutions.delete(key2.path.canonicalString());
+  const limboTargetId = syncEngineImpl.activeLimboTargetsByKey.get(key2);
+  if (limboTargetId === null) {
+    return;
+  }
+  remoteStoreUnlisten(syncEngineImpl.remoteStore, limboTargetId);
+  syncEngineImpl.activeLimboTargetsByKey = syncEngineImpl.activeLimboTargetsByKey.remove(key2);
+  syncEngineImpl.activeLimboResolutionsByTarget.delete(limboTargetId);
+  pumpEnqueuedLimboResolutions(syncEngineImpl);
+}
+function updateTrackedLimbos(syncEngineImpl, targetId, limboChanges) {
+  for (const limboChange of limboChanges) {
+    if (limboChange instanceof AddedLimboDocument) {
+      syncEngineImpl.limboDocumentRefs.addReference(limboChange.key, targetId);
+      trackLimboChange(syncEngineImpl, limboChange);
+    } else if (limboChange instanceof RemovedLimboDocument) {
+      logDebug(LOG_TAG$3, "Document no longer in limbo: " + limboChange.key);
+      syncEngineImpl.limboDocumentRefs.removeReference(limboChange.key, targetId);
+      const isReferenced = syncEngineImpl.limboDocumentRefs.containsKey(limboChange.key);
+      if (!isReferenced) {
+        removeLimboTarget(syncEngineImpl, limboChange.key);
+      }
+    } else {
+      fail();
+    }
+  }
+}
+function trackLimboChange(syncEngineImpl, limboChange) {
+  const key2 = limboChange.key;
+  const keyString = key2.path.canonicalString();
+  if (!syncEngineImpl.activeLimboTargetsByKey.get(key2) && !syncEngineImpl.enqueuedLimboResolutions.has(keyString)) {
+    logDebug(LOG_TAG$3, "New document in limbo: " + key2);
+    syncEngineImpl.enqueuedLimboResolutions.add(keyString);
+    pumpEnqueuedLimboResolutions(syncEngineImpl);
+  }
+}
+function pumpEnqueuedLimboResolutions(syncEngineImpl) {
+  while (syncEngineImpl.enqueuedLimboResolutions.size > 0 && syncEngineImpl.activeLimboTargetsByKey.size < syncEngineImpl.maxConcurrentLimboResolutions) {
+    const keyString = syncEngineImpl.enqueuedLimboResolutions.values().next().value;
+    syncEngineImpl.enqueuedLimboResolutions.delete(keyString);
+    const key2 = new DocumentKey(ResourcePath.fromString(keyString));
+    const limboTargetId = syncEngineImpl.limboTargetIdGenerator.next();
+    syncEngineImpl.activeLimboResolutionsByTarget.set(limboTargetId, new LimboResolution(key2));
+    syncEngineImpl.activeLimboTargetsByKey = syncEngineImpl.activeLimboTargetsByKey.insert(key2, limboTargetId);
+    remoteStoreListen(syncEngineImpl.remoteStore, new TargetData(queryToTarget(newQueryForPath(key2.path)), limboTargetId, "TargetPurposeLimboResolution", ListenSequence.INVALID));
+  }
+}
+async function syncEngineEmitNewSnapsAndNotifyLocalStore(syncEngine, changes, remoteEvent) {
+  const syncEngineImpl = debugCast(syncEngine);
+  const newSnaps = [];
+  const docChangesInAllViews = [];
+  const queriesProcessed = [];
+  if (syncEngineImpl.queryViewsByQuery.isEmpty()) {
+    return;
+  }
+  syncEngineImpl.queryViewsByQuery.forEach((_, queryView) => {
+    queriesProcessed.push(syncEngineImpl.applyDocChanges(queryView, changes, remoteEvent).then((viewSnapshot) => {
+      if (viewSnapshot || remoteEvent) {
+        if (syncEngineImpl.isPrimaryClient) {
+          syncEngineImpl.sharedClientState.updateQueryState(queryView.targetId, (viewSnapshot === null || viewSnapshot === void 0 ? void 0 : viewSnapshot.fromCache) ? "not-current" : "current");
+        }
+      }
+      if (!!viewSnapshot) {
+        newSnaps.push(viewSnapshot);
+        const docChanges = LocalViewChanges.fromSnapshot(queryView.targetId, viewSnapshot);
+        docChangesInAllViews.push(docChanges);
+      }
+    }));
+  });
+  await Promise.all(queriesProcessed);
+  syncEngineImpl.syncEngineListener.onWatchChange(newSnaps);
+  await localStoreNotifyLocalViewChanges(syncEngineImpl.localStore, docChangesInAllViews);
+}
+async function applyDocChanges(syncEngineImpl, queryView, changes, remoteEvent) {
+  let viewDocChanges = queryView.view.computeDocChanges(changes);
+  if (viewDocChanges.needsRefill) {
+    viewDocChanges = await localStoreExecuteQuery(
+      syncEngineImpl.localStore,
+      queryView.query,
+      /* usePreviousResults= */
+      false
+    ).then(({ documents }) => {
+      return queryView.view.computeDocChanges(documents, viewDocChanges);
+    });
+  }
+  const targetChange = remoteEvent && remoteEvent.targetChanges.get(queryView.targetId);
+  const viewChange = queryView.view.applyChanges(
+    viewDocChanges,
+    /* updateLimboDocuments= */
+    syncEngineImpl.isPrimaryClient,
+    targetChange
+  );
+  updateTrackedLimbos(syncEngineImpl, queryView.targetId, viewChange.limboChanges);
+  return viewChange.snapshot;
+}
+async function syncEngineHandleCredentialChange(syncEngine, user2) {
+  const syncEngineImpl = debugCast(syncEngine);
+  const userChanged = !syncEngineImpl.currentUser.isEqual(user2);
+  if (userChanged) {
+    logDebug(LOG_TAG$3, "User change. New user:", user2.toKey());
+    const result = await localStoreHandleUserChange(syncEngineImpl.localStore, user2);
+    syncEngineImpl.currentUser = user2;
+    rejectOutstandingPendingWritesCallbacks(syncEngineImpl, "'waitForPendingWrites' promise is rejected due to a user change.");
+    syncEngineImpl.sharedClientState.handleUserChange(user2, result.removedBatchIds, result.addedBatchIds);
+    await syncEngineEmitNewSnapsAndNotifyLocalStore(syncEngineImpl, result.affectedDocuments);
+  }
+}
+function syncEngineGetRemoteKeysForTarget(syncEngine, targetId) {
+  const syncEngineImpl = debugCast(syncEngine);
+  const limboResolution = syncEngineImpl.activeLimboResolutionsByTarget.get(targetId);
+  if (limboResolution && limboResolution.receivedDocument) {
+    return documentKeySet().add(limboResolution.key);
+  } else {
+    let keySet = documentKeySet();
+    const queries = syncEngineImpl.queriesByTarget.get(targetId);
+    if (!queries) {
+      return keySet;
+    }
+    for (const query of queries) {
+      const queryView = syncEngineImpl.queryViewsByQuery.get(query);
+      keySet = keySet.unionWith(queryView.view.syncedDocuments);
+    }
+    return keySet;
+  }
+}
+function ensureWatchCallbacks(syncEngine) {
+  const syncEngineImpl = debugCast(syncEngine);
+  syncEngineImpl.remoteStore.remoteSyncer.applyRemoteEvent = syncEngineApplyRemoteEvent.bind(null, syncEngineImpl);
+  syncEngineImpl.remoteStore.remoteSyncer.getRemoteKeysForTarget = syncEngineGetRemoteKeysForTarget.bind(null, syncEngineImpl);
+  syncEngineImpl.remoteStore.remoteSyncer.rejectListen = syncEngineRejectListen.bind(null, syncEngineImpl);
+  syncEngineImpl.syncEngineListener.onWatchChange = eventManagerOnWatchChange.bind(null, syncEngineImpl.eventManager);
+  syncEngineImpl.syncEngineListener.onWatchError = eventManagerOnWatchError.bind(null, syncEngineImpl.eventManager);
+  return syncEngineImpl;
+}
+function validateNonEmptyArgument(functionName, argumentName, argument) {
+  if (!argument) {
+    throw new FirestoreError(Code.INVALID_ARGUMENT, `Function ${functionName}() cannot be called with an empty ${argumentName}.`);
+  }
+}
 function validateIsNotUsedTogether(optionName1, argument1, optionName2, argument2) {
   if (argument1 === true && argument2 === true) {
     throw new FirestoreError(Code.INVALID_ARGUMENT, `${optionName1} and ${optionName2} cannot be used together.`);
+  }
+}
+function validateDocumentPath(path) {
+  if (!DocumentKey.isDocumentKey(path)) {
+    throw new FirestoreError(Code.INVALID_ARGUMENT, `Invalid document reference. Document references must have an even number of segments, but ${path} has ${path.length}.`);
   }
 }
 function valueDescription(input) {
@@ -45818,6 +48760,101 @@ function cast(obj, constructor) {
     }
   }
   return obj;
+}
+async function setOfflineComponentProvider(client, offlineComponentProvider) {
+  client.asyncQueue.verifyOperationInProgress();
+  logDebug(LOG_TAG$2, "Initializing OfflineComponentProvider");
+  const configuration = await client.getConfiguration();
+  await offlineComponentProvider.initialize(configuration);
+  let currentUser = configuration.initialUser;
+  client.setCredentialChangeListener(async (user2) => {
+    if (!currentUser.isEqual(user2)) {
+      await localStoreHandleUserChange(offlineComponentProvider.localStore, user2);
+      currentUser = user2;
+    }
+  });
+  offlineComponentProvider.persistence.setDatabaseDeletedListener(() => client.terminate());
+  client._offlineComponents = offlineComponentProvider;
+}
+async function setOnlineComponentProvider(client, onlineComponentProvider) {
+  client.asyncQueue.verifyOperationInProgress();
+  const offlineComponentProvider = await ensureOfflineComponents(client);
+  logDebug(LOG_TAG$2, "Initializing OnlineComponentProvider");
+  const configuration = await client.getConfiguration();
+  await onlineComponentProvider.initialize(offlineComponentProvider, configuration);
+  client.setCredentialChangeListener((user2) => remoteStoreHandleCredentialChange(onlineComponentProvider.remoteStore, user2));
+  client.setAppCheckTokenChangeListener((_, user2) => remoteStoreHandleCredentialChange(onlineComponentProvider.remoteStore, user2));
+  client._onlineComponents = onlineComponentProvider;
+}
+function canFallbackFromIndexedDbError(error2) {
+  if (error2.name === "FirebaseError") {
+    return error2.code === Code.FAILED_PRECONDITION || error2.code === Code.UNIMPLEMENTED;
+  } else if (typeof DOMException !== "undefined" && error2 instanceof DOMException) {
+    return (
+      // When the browser is out of quota we could get either quota exceeded
+      // or an aborted error depending on whether the error happened during
+      // schema migration.
+      error2.code === DOM_EXCEPTION_QUOTA_EXCEEDED || error2.code === DOM_EXCEPTION_ABORTED || // Firefox Private Browsing mode disables IndexedDb and returns
+      // INVALID_STATE for any usage.
+      error2.code === DOM_EXCEPTION_INVALID_STATE
+    );
+  }
+  return true;
+}
+async function ensureOfflineComponents(client) {
+  if (!client._offlineComponents) {
+    if (client._uninitializedComponentsProvider) {
+      logDebug(LOG_TAG$2, "Using user provided OfflineComponentProvider");
+      try {
+        await setOfflineComponentProvider(client, client._uninitializedComponentsProvider._offline);
+      } catch (e) {
+        const error2 = e;
+        if (!canFallbackFromIndexedDbError(error2)) {
+          throw error2;
+        }
+        logWarn("Error using user provided cache. Falling back to memory cache: " + error2);
+        await setOfflineComponentProvider(client, new MemoryOfflineComponentProvider());
+      }
+    } else {
+      logDebug(LOG_TAG$2, "Using default OfflineComponentProvider");
+      await setOfflineComponentProvider(client, new MemoryOfflineComponentProvider());
+    }
+  }
+  return client._offlineComponents;
+}
+async function ensureOnlineComponents(client) {
+  if (!client._onlineComponents) {
+    if (client._uninitializedComponentsProvider) {
+      logDebug(LOG_TAG$2, "Using user provided OnlineComponentProvider");
+      await setOnlineComponentProvider(client, client._uninitializedComponentsProvider._online);
+    } else {
+      logDebug(LOG_TAG$2, "Using default OnlineComponentProvider");
+      await setOnlineComponentProvider(client, new OnlineComponentProvider());
+    }
+  }
+  return client._onlineComponents;
+}
+async function getEventManager(client) {
+  const onlineComponentProvider = await ensureOnlineComponents(client);
+  const eventManager = onlineComponentProvider.eventManager;
+  eventManager.onListen = syncEngineListen.bind(null, onlineComponentProvider.syncEngine);
+  eventManager.onUnlisten = syncEngineUnlisten.bind(null, onlineComponentProvider.syncEngine);
+  return eventManager;
+}
+function firestoreClientListen(client, query, options2, observer) {
+  const wrappedObserver = new AsyncObserver(observer);
+  const listener = new QueryListener(query, wrappedObserver, options2);
+  client.asyncQueue.enqueueAndForget(async () => {
+    const eventManager = await getEventManager(client);
+    return eventManagerListen(eventManager, listener);
+  });
+  return () => {
+    wrappedObserver.mute();
+    client.asyncQueue.enqueueAndForget(async () => {
+      const eventManager = await getEventManager(client);
+      return eventManagerUnlisten(eventManager, listener);
+    });
+  };
 }
 function longPollingOptionsEqual(options1, options2) {
   return options1.timeoutSeconds === options2.timeoutSeconds;
@@ -45879,6 +48916,30 @@ function connectFirestoreEmulator(firestore, host, port, options2 = {}) {
     firestore._authCredentials = new EmulatorAuthCredentialsProvider(new OAuthToken(token, user2));
   }
 }
+function doc(parent, path, ...pathSegments) {
+  parent = getModularInstance(parent);
+  if (arguments.length === 1) {
+    path = AutoId.newId();
+  }
+  validateNonEmptyArgument("doc", "path", path);
+  if (parent instanceof Firestore$1) {
+    const absolutePath = ResourcePath.fromString(path, ...pathSegments);
+    validateDocumentPath(absolutePath);
+    return new DocumentReference(
+      parent,
+      /* converter= */
+      null,
+      new DocumentKey(absolutePath)
+    );
+  } else {
+    if (!(parent instanceof DocumentReference) && !(parent instanceof CollectionReference)) {
+      throw new FirestoreError(Code.INVALID_ARGUMENT, "Expected first argument to collection() to be a CollectionReference, a DocumentReference or FirebaseFirestore");
+    }
+    const absolutePath = parent._path.child(ResourcePath.fromString(path, ...pathSegments));
+    validateDocumentPath(absolutePath);
+    return new DocumentReference(parent.firestore, parent instanceof CollectionReference ? parent.converter : null, new DocumentKey(absolutePath));
+  }
+}
 function newAsyncQueue() {
   return new AsyncQueueImpl();
 }
@@ -45896,16 +48957,23 @@ function getMessageOrStack(error2) {
 function getFirestore(appOrDatabaseId, optionalDatabaseId) {
   const app2 = typeof appOrDatabaseId === "object" ? appOrDatabaseId : getApp();
   const databaseId = typeof appOrDatabaseId === "string" ? appOrDatabaseId : optionalDatabaseId || DEFAULT_DATABASE_NAME;
-  const db2 = _getProvider(app2, "firestore").getImmediate({
+  const db3 = _getProvider(app2, "firestore").getImmediate({
     identifier: databaseId
   });
-  if (!db2._initialized) {
+  if (!db3._initialized) {
     const emulator = getDefaultEmulatorHostnameAndPort("firestore");
     if (emulator) {
-      connectFirestoreEmulator(db2, ...emulator);
+      connectFirestoreEmulator(db3, ...emulator);
     }
   }
-  return db2;
+  return db3;
+}
+function ensureFirestoreConfigured(firestore) {
+  if (!firestore._firestoreClient) {
+    configureFirestore(firestore);
+  }
+  firestore._firestoreClient.verifyNotTerminated();
+  return firestore._firestoreClient;
 }
 function configureFirestore(firestore) {
   var _a, _b, _c;
@@ -45932,7 +49000,195 @@ function registerFirestore(variant, useFetchStreams = true) {
   registerVersion(name3, version$12, variant);
   registerVersion(name3, version$12, "esm2017");
 }
-var import_util6, import_crypto, grpc, protoLoader, name3, version$12, User, version3, SDK_VERSION2, logClient2, Code, FirestoreError, Deferred2, OAuthToken, EmptyAuthCredentialsProvider, EmulatorAuthCredentialsProvider, FirebaseAuthCredentialsProvider, FirstPartyToken, FirstPartyAuthCredentialsProvider, AppCheckToken, FirebaseAppCheckTokenProvider, AutoId, BasePath, ResourcePath, DocumentKey, FieldIndex, INITIAL_BACKFILL_DELAY_MS, REGULAR_BACKFILL_DELAY_MS, ListenSequence, DbRemoteDocumentStore$1, DbPrimaryClientStore, DbMutationQueueStore, DbMutationBatchStore, DbDocumentMutationStore, DbRemoteDocumentStore, DbRemoteDocumentGlobalStore, DbTargetStore, DbTargetDocumentStore, DbTargetGlobalStore, DbCollectionParentStore, DbClientMetadataStore, DbBundleStore, DbNamedQueryStore, DbIndexConfigurationStore, DbIndexStateStore, DbIndexEntryStore, DbDocumentOverlayStore, V1_STORES, V3_STORES, V4_STORES, V6_STORES, V8_STORES, V11_STORES, V12_STORES, V13_STORES, V14_STORES, V15_STORES, SortedMap, SortedMapIterator, LLRBNode, LLRBEmptyNode, SortedSet, SortedSetIterator, ByteString, ISO_TIMESTAMP_REG_EXP, DatabaseInfo, DEFAULT_DATABASE_NAME, DatabaseId, MAX_VALUE_TYPE, EMPTY_MUTABLE_DOCUMENT_MAP, EMPTY_DOCUMENT_MAP, EMPTY_DOCUMENT_VERSION_MAP, EMPTY_DOCUMENT_KEY_SET, EMPTY_TARGET_ID_SET, RpcCode, MAX_64_BIT_UNSIGNED_INTEGER, DIRECTIONS, OPERATORS, COMPOSITE_OPERATORS, INDEX_TYPE_NULL, INDEX_TYPE_BOOLEAN, INDEX_TYPE_NAN, INDEX_TYPE_NUMBER, INDEX_TYPE_TIMESTAMP, INDEX_TYPE_STRING, INDEX_TYPE_BLOB, INDEX_TYPE_REFERENCE, INDEX_TYPE_GEOPOINT, INDEX_TYPE_ARRAY, INDEX_TYPE_MAP, INDEX_TYPE_REFERENCE_SEGMENT, NOT_TRUNCATED, FirestoreIndexValueWriter, EMPTY_VALUE, LRU_COLLECTION_DISABLED, LRU_DEFAULT_CACHE_SIZE_BYTES, LruParams, LRU_MINIMUM_CACHE_SIZE_BYTES, INITIAL_GC_DELAY_MS, REGULAR_GC_DELAY_MS, MAX_CLIENT_AGE_MS, RESUME_TOKEN_MAX_AGE_MICROS, grpcVersion, X_GOOG_API_CLIENT_VALUE, LOG_TAG$8, DEFAULT_BACKOFF_INITIAL_DELAY_MS, DEFAULT_BACKOFF_FACTOR, DEFAULT_BACKOFF_MAX_DELAY_MS, ExponentialBackoff, IDLE_TIMEOUT_MS, HEALTHY_TIMEOUT_MS, ONLINE_STATE_TIMEOUT_MS, LOG_TAG$4, DelayedOperation, LOG_TAG$2, MAX_CONCURRENT_LIMBO_RESOLUTIONS, FirestoreClient, LOG_TAG$1, datastoreInstances, DEFAULT_HOST, DEFAULT_SSL, MIN_LONG_POLLING_TIMEOUT_SECONDS, MAX_LONG_POLLING_TIMEOUT_SECONDS, DEFAULT_AUTO_DETECT_LONG_POLLING, FirestoreSettingsImpl, Firestore$1, LOG_TAG, AsyncQueueImpl, Firestore, FIELD_PATH_RESERVED;
+function fieldPathFromDotSeparatedString(methodName, path, targetDoc) {
+  const found = path.search(FIELD_PATH_RESERVED);
+  if (found >= 0) {
+    throw createError(
+      `Invalid field path (${path}). Paths must not contain '~', '*', '/', '[', or ']'`,
+      methodName,
+      /* hasConverter= */
+      false,
+      /* path= */
+      void 0,
+      targetDoc
+    );
+  }
+  try {
+    return new FieldPath(...path.split("."))._internalPath;
+  } catch (e) {
+    throw createError(
+      `Invalid field path (${path}). Paths must not be empty, begin with '.', end with '.', or contain '..'`,
+      methodName,
+      /* hasConverter= */
+      false,
+      /* path= */
+      void 0,
+      targetDoc
+    );
+  }
+}
+function createError(reason, methodName, hasConverter, path, targetDoc) {
+  const hasPath = path && !path.isEmpty();
+  const hasDocument = targetDoc !== void 0;
+  let message = `Function ${methodName}() called with invalid data`;
+  if (hasConverter) {
+    message += " (via `toFirestore()`)";
+  }
+  message += ". ";
+  let description = "";
+  if (hasPath || hasDocument) {
+    description += " (found";
+    if (hasPath) {
+      description += ` in field ${path}`;
+    }
+    if (hasDocument) {
+      description += ` in document ${targetDoc}`;
+    }
+    description += ")";
+  }
+  return new FirestoreError(Code.INVALID_ARGUMENT, message + reason + description);
+}
+function fieldPathFromArgument(methodName, arg) {
+  if (typeof arg === "string") {
+    return fieldPathFromDotSeparatedString(methodName, arg);
+  } else if (arg instanceof FieldPath) {
+    return arg._internalPath;
+  } else {
+    return arg._delegate._internalPath;
+  }
+}
+function validateHasExplicitOrderByForLimitToLast(query) {
+  if (query.limitType === "L" && query.explicitOrderBy.length === 0) {
+    throw new FirestoreError(Code.UNIMPLEMENTED, "limitToLast() queries require specifying at least one orderBy() clause");
+  }
+}
+function isPartialObserver(obj) {
+  return implementsAnyMethods2(obj, ["next", "error", "complete"]);
+}
+function implementsAnyMethods2(obj, methods) {
+  if (typeof obj !== "object" || obj === null) {
+    return false;
+  }
+  const object = obj;
+  for (const method of methods) {
+    if (method in object && typeof object[method] === "function") {
+      return true;
+    }
+  }
+  return false;
+}
+function changesFromSnapshot(querySnapshot, includeMetadataChanges) {
+  if (querySnapshot._snapshot.oldDocs.isEmpty()) {
+    let index16 = 0;
+    return querySnapshot._snapshot.docChanges.map((change) => {
+      const doc2 = new QueryDocumentSnapshot(querySnapshot._firestore, querySnapshot._userDataWriter, change.doc.key, change.doc, new SnapshotMetadata(querySnapshot._snapshot.mutatedKeys.has(change.doc.key), querySnapshot._snapshot.fromCache), querySnapshot.query.converter);
+      change.doc;
+      return {
+        type: "added",
+        doc: doc2,
+        oldIndex: -1,
+        newIndex: index16++
+      };
+    });
+  } else {
+    let indexTracker = querySnapshot._snapshot.oldDocs;
+    return querySnapshot._snapshot.docChanges.filter(
+      (change) => includeMetadataChanges || change.type !== 3
+      /* ChangeType.Metadata */
+    ).map((change) => {
+      const doc2 = new QueryDocumentSnapshot(querySnapshot._firestore, querySnapshot._userDataWriter, change.doc.key, change.doc, new SnapshotMetadata(querySnapshot._snapshot.mutatedKeys.has(change.doc.key), querySnapshot._snapshot.fromCache), querySnapshot.query.converter);
+      let oldIndex = -1;
+      let newIndex = -1;
+      if (change.type !== 0) {
+        oldIndex = indexTracker.indexOf(change.doc.key);
+        indexTracker = indexTracker.delete(change.doc.key);
+      }
+      if (change.type !== 1) {
+        indexTracker = indexTracker.add(change.doc);
+        newIndex = indexTracker.indexOf(change.doc.key);
+      }
+      return {
+        type: resultChangeType(change.type),
+        doc: doc2,
+        oldIndex,
+        newIndex
+      };
+    });
+  }
+}
+function resultChangeType(type) {
+  switch (type) {
+    case 0:
+      return "added";
+    case 2:
+    case 3:
+      return "modified";
+    case 1:
+      return "removed";
+    default:
+      return fail();
+  }
+}
+function onSnapshot(reference, ...args) {
+  var _a, _b, _c;
+  reference = getModularInstance(reference);
+  let options2 = {
+    includeMetadataChanges: false
+  };
+  let currArg = 0;
+  if (typeof args[currArg] === "object" && !isPartialObserver(args[currArg])) {
+    options2 = args[currArg];
+    currArg++;
+  }
+  const internalOptions = {
+    includeMetadataChanges: options2.includeMetadataChanges
+  };
+  if (isPartialObserver(args[currArg])) {
+    const userObserver = args[currArg];
+    args[currArg] = (_a = userObserver.next) === null || _a === void 0 ? void 0 : _a.bind(userObserver);
+    args[currArg + 1] = (_b = userObserver.error) === null || _b === void 0 ? void 0 : _b.bind(userObserver);
+    args[currArg + 2] = (_c = userObserver.complete) === null || _c === void 0 ? void 0 : _c.bind(userObserver);
+  }
+  let observer;
+  let firestore;
+  let internalQuery;
+  if (reference instanceof DocumentReference) {
+    firestore = cast(reference.firestore, Firestore);
+    internalQuery = newQueryForPath(reference._key.path);
+    observer = {
+      next: (snapshot) => {
+        if (args[currArg]) {
+          args[currArg](convertToDocSnapshot(firestore, reference, snapshot));
+        }
+      },
+      error: args[currArg + 1],
+      complete: args[currArg + 2]
+    };
+  } else {
+    const query = cast(reference, Query);
+    firestore = cast(query.firestore, Firestore);
+    internalQuery = query._query;
+    const userDataWriter = new ExpUserDataWriter(firestore);
+    observer = {
+      next: (snapshot) => {
+        if (args[currArg]) {
+          args[currArg](new QuerySnapshot(firestore, userDataWriter, query, snapshot));
+        }
+      },
+      error: args[currArg + 1],
+      complete: args[currArg + 2]
+    };
+    validateHasExplicitOrderByForLimitToLast(reference._query);
+  }
+  const client = ensureFirestoreConfigured(firestore);
+  return firestoreClientListen(client, internalQuery, internalOptions, observer);
+}
+function convertToDocSnapshot(firestore, ref, snapshot) {
+  const doc2 = snapshot.docs.get(ref._key);
+  const userDataWriter = new ExpUserDataWriter(firestore);
+  return new DocumentSnapshot(firestore, userDataWriter, ref._key, doc2, new SnapshotMetadata(snapshot.hasPendingWrites, snapshot.fromCache), ref.converter);
+}
+var import_util6, import_crypto, grpc, protoLoader, name3, version$12, User, version3, SDK_VERSION2, logClient2, Code, FirestoreError, Deferred2, OAuthToken, EmptyAuthCredentialsProvider, EmulatorAuthCredentialsProvider, FirebaseAuthCredentialsProvider, FirstPartyToken, FirstPartyAuthCredentialsProvider, AppCheckToken, FirebaseAppCheckTokenProvider, AutoId, MIN_SECONDS, MS_TO_NANOS, Timestamp, SnapshotVersion, DOCUMENT_KEY_NAME, BasePath, ResourcePath, identifierRegExp, FieldPath$1, DocumentKey, INITIAL_LARGEST_BATCH_ID, FieldIndex, IndexOffset, PRIMARY_LEASE_LOST_ERROR_MSG, PersistenceTransaction, PersistencePromise, INITIAL_BACKFILL_DELAY_MS, REGULAR_BACKFILL_DELAY_MS, ListenSequence, DbRemoteDocumentStore$1, DbPrimaryClientStore, DbMutationQueueStore, DbMutationBatchStore, DbDocumentMutationStore, DbRemoteDocumentStore, DbRemoteDocumentGlobalStore, DbTargetStore, DbTargetDocumentStore, DbTargetGlobalStore, DbCollectionParentStore, DbClientMetadataStore, DbBundleStore, DbNamedQueryStore, DbIndexConfigurationStore, DbIndexStateStore, DbIndexEntryStore, DbDocumentOverlayStore, V1_STORES, V3_STORES, V4_STORES, V6_STORES, V8_STORES, V11_STORES, V12_STORES, V13_STORES, V14_STORES, V15_STORES, SortedMap, SortedMapIterator, LLRBNode, LLRBEmptyNode, SortedSet, SortedSetIterator, FieldMask, ByteString, ISO_TIMESTAMP_REG_EXP, SERVER_TIMESTAMP_SENTINEL, TYPE_KEY, PREVIOUS_VALUE_KEY, LOCAL_WRITE_TIME_KEY, DatabaseInfo, DEFAULT_DATABASE_NAME, DatabaseId, BATCHID_UNKNOWN, MAX_VALUE_TYPE, MAX_VALUE, ObjectValue, MutableDocument, Bound, OrderBy, Filter, FieldFilter, CompositeFilter, KeyFieldFilter, KeyFieldInFilter, KeyFieldNotInFilter, ArrayContainsFilter, InFilter, NotInFilter, ArrayContainsAnyFilter, TargetImpl, QueryImpl, ObjectMap, EMPTY_MUTABLE_DOCUMENT_MAP, EMPTY_DOCUMENT_MAP, EMPTY_DOCUMENT_VERSION_MAP, EMPTY_DOCUMENT_KEY_SET, EMPTY_TARGET_ID_SET, TransformOperation, ServerTimestampTransform, ArrayUnionTransformOperation, ArrayRemoveTransformOperation, NumericIncrementTransformOperation, Precondition, Mutation, SetMutation, PatchMutation, DeleteMutation, MutationBatch, Overlay, ExistenceFilter, RpcCode, Base64DecodeError, testingHooksSpi, MAX_64_BIT_UNSIGNED_INTEGER, BloomFilter, BloomFilterError, RemoteEvent, TargetChange, DocumentWatchChange, ExistenceFilterChange, WatchTargetChange, TargetState, LOG_TAG$g, WatchChangeAggregator, DIRECTIONS, OPERATORS, COMPOSITE_OPERATORS, JsonProtoSerializer, TargetData, LocalSerializer, INDEX_TYPE_NULL, INDEX_TYPE_BOOLEAN, INDEX_TYPE_NAN, INDEX_TYPE_NUMBER, INDEX_TYPE_TIMESTAMP, INDEX_TYPE_STRING, INDEX_TYPE_BLOB, INDEX_TYPE_REFERENCE, INDEX_TYPE_GEOPOINT, INDEX_TYPE_ARRAY, INDEX_TYPE_MAP, INDEX_TYPE_REFERENCE_SEGMENT, NOT_TRUNCATED, FirestoreIndexValueWriter, MemoryIndexManager, MemoryCollectionParentIndex, EMPTY_VALUE, OFFSET, TargetIdGenerator, LRU_COLLECTION_DISABLED, LRU_DEFAULT_CACHE_SIZE_BYTES, LruParams, LRU_MINIMUM_CACHE_SIZE_BYTES, INITIAL_GC_DELAY_MS, REGULAR_GC_DELAY_MS, RemoteDocumentChangeBuffer, OverlayedDocument, LocalDocumentsView, MemoryBundleCache, MemoryDocumentOverlayCache, ReferenceSet, DocReference, MemoryMutationQueue, MemoryRemoteDocumentCacheImpl, MemoryRemoteDocumentChangeBuffer, MemoryTargetCache, LOG_TAG$d, MemoryPersistence, MemoryTransaction, MemoryEagerDelegate, MAX_CLIENT_AGE_MS, LOG_TAG$b, RESUME_TOKEN_MAX_AGE_MICROS, LocalStoreImpl, QueryContext, DEFAULT_INDEX_AUTO_CREATION_MIN_COLLECTION_SIZE, DEFAULT_RELATIVE_INDEX_READ_COST_PER_DOCUMENT, QueryEngine, LocalClientState, MemorySharedClientState, NoopConnectivityMonitor, StreamBridge, lastUniqueDebugId, grpcVersion, LOG_TAG$9, X_GOOG_API_CLIENT_VALUE, GrpcConnection, nested, protos, protos$1, protoLoaderOptions, LOG_TAG$8, DEFAULT_BACKOFF_INITIAL_DELAY_MS, DEFAULT_BACKOFF_FACTOR, DEFAULT_BACKOFF_MAX_DELAY_MS, ExponentialBackoff, LOG_TAG$7, IDLE_TIMEOUT_MS, HEALTHY_TIMEOUT_MS, PersistentStream, PersistentListenStream, Datastore, DatastoreImpl, LOG_TAG$6, MAX_WATCH_STREAM_FAILURES, ONLINE_STATE_TIMEOUT_MS, OnlineStateTracker, LOG_TAG$5, RemoteStoreImpl, LOG_TAG$4, DelayedOperation, DocumentSet, DocumentChangeSet, ViewSnapshot, QueryListenersInfo, EventManagerImpl, QueryListener, LocalViewChanges, AddedLimboDocument, RemovedLimboDocument, View, LOG_TAG$3, QueryView, LimboResolution, SyncEngineImpl, MemoryOfflineComponentProvider, OnlineComponentProvider, AsyncObserver, LOG_TAG$2, MAX_CONCURRENT_LIMBO_RESOLUTIONS, DOM_EXCEPTION_INVALID_STATE, DOM_EXCEPTION_ABORTED, DOM_EXCEPTION_QUOTA_EXCEEDED, FirestoreClient, LOG_TAG$1, datastoreInstances, DEFAULT_HOST, DEFAULT_SSL, MIN_LONG_POLLING_TIMEOUT_SECONDS, MAX_LONG_POLLING_TIMEOUT_SECONDS, DEFAULT_AUTO_DETECT_LONG_POLLING, FirestoreSettingsImpl, Firestore$1, Query, DocumentReference, CollectionReference, LOG_TAG, AsyncQueueImpl, Firestore, Bytes, FieldPath, GeoPoint, FIELD_PATH_RESERVED, DocumentSnapshot$1, QueryDocumentSnapshot$1, AbstractUserDataWriter, SnapshotMetadata, DocumentSnapshot, QueryDocumentSnapshot, QuerySnapshot, ExpUserDataWriter;
 var init_index_node = __esm({
   "node_modules/@firebase/firestore/dist/index.node.mjs"() {
     init_shims();
@@ -46374,6 +49630,153 @@ var init_index_node = __esm({
         return autoId;
       }
     };
+    MIN_SECONDS = -62135596800;
+    MS_TO_NANOS = 1e6;
+    Timestamp = class {
+      /**
+       * Creates a new timestamp.
+       *
+       * @param seconds - The number of seconds of UTC time since Unix epoch
+       *     1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to
+       *     9999-12-31T23:59:59Z inclusive.
+       * @param nanoseconds - The non-negative fractions of a second at nanosecond
+       *     resolution. Negative second values with fractions must still have
+       *     non-negative nanoseconds values that count forward in time. Must be
+       *     from 0 to 999,999,999 inclusive.
+       */
+      constructor(seconds, nanoseconds) {
+        this.seconds = seconds;
+        this.nanoseconds = nanoseconds;
+        if (nanoseconds < 0) {
+          throw new FirestoreError(Code.INVALID_ARGUMENT, "Timestamp nanoseconds out of range: " + nanoseconds);
+        }
+        if (nanoseconds >= 1e9) {
+          throw new FirestoreError(Code.INVALID_ARGUMENT, "Timestamp nanoseconds out of range: " + nanoseconds);
+        }
+        if (seconds < MIN_SECONDS) {
+          throw new FirestoreError(Code.INVALID_ARGUMENT, "Timestamp seconds out of range: " + seconds);
+        }
+        if (seconds >= 253402300800) {
+          throw new FirestoreError(Code.INVALID_ARGUMENT, "Timestamp seconds out of range: " + seconds);
+        }
+      }
+      /**
+       * Creates a new timestamp with the current date, with millisecond precision.
+       *
+       * @returns a new timestamp representing the current date.
+       */
+      static now() {
+        return Timestamp.fromMillis(Date.now());
+      }
+      /**
+       * Creates a new timestamp from the given date.
+       *
+       * @param date - The date to initialize the `Timestamp` from.
+       * @returns A new `Timestamp` representing the same point in time as the given
+       *     date.
+       */
+      static fromDate(date) {
+        return Timestamp.fromMillis(date.getTime());
+      }
+      /**
+       * Creates a new timestamp from the given number of milliseconds.
+       *
+       * @param milliseconds - Number of milliseconds since Unix epoch
+       *     1970-01-01T00:00:00Z.
+       * @returns A new `Timestamp` representing the same point in time as the given
+       *     number of milliseconds.
+       */
+      static fromMillis(milliseconds) {
+        const seconds = Math.floor(milliseconds / 1e3);
+        const nanos = Math.floor((milliseconds - seconds * 1e3) * MS_TO_NANOS);
+        return new Timestamp(seconds, nanos);
+      }
+      /**
+       * Converts a `Timestamp` to a JavaScript `Date` object. This conversion
+       * causes a loss of precision since `Date` objects only support millisecond
+       * precision.
+       *
+       * @returns JavaScript `Date` object representing the same point in time as
+       *     this `Timestamp`, with millisecond precision.
+       */
+      toDate() {
+        return new Date(this.toMillis());
+      }
+      /**
+       * Converts a `Timestamp` to a numeric timestamp (in milliseconds since
+       * epoch). This operation causes a loss of precision.
+       *
+       * @returns The point in time corresponding to this timestamp, represented as
+       *     the number of milliseconds since Unix epoch 1970-01-01T00:00:00Z.
+       */
+      toMillis() {
+        return this.seconds * 1e3 + this.nanoseconds / MS_TO_NANOS;
+      }
+      _compareTo(other) {
+        if (this.seconds === other.seconds) {
+          return primitiveComparator(this.nanoseconds, other.nanoseconds);
+        }
+        return primitiveComparator(this.seconds, other.seconds);
+      }
+      /**
+       * Returns true if this `Timestamp` is equal to the provided one.
+       *
+       * @param other - The `Timestamp` to compare against.
+       * @returns true if this `Timestamp` is equal to the provided one.
+       */
+      isEqual(other) {
+        return other.seconds === this.seconds && other.nanoseconds === this.nanoseconds;
+      }
+      /** Returns a textual representation of this `Timestamp`. */
+      toString() {
+        return "Timestamp(seconds=" + this.seconds + ", nanoseconds=" + this.nanoseconds + ")";
+      }
+      /** Returns a JSON-serializable representation of this `Timestamp`. */
+      toJSON() {
+        return { seconds: this.seconds, nanoseconds: this.nanoseconds };
+      }
+      /**
+       * Converts this object to a primitive string, which allows `Timestamp` objects
+       * to be compared using the `>`, `<=`, `>=` and `>` operators.
+       */
+      valueOf() {
+        const adjustedSeconds = this.seconds - MIN_SECONDS;
+        const formattedSeconds = String(adjustedSeconds).padStart(12, "0");
+        const formattedNanoseconds = String(this.nanoseconds).padStart(9, "0");
+        return formattedSeconds + "." + formattedNanoseconds;
+      }
+    };
+    SnapshotVersion = class {
+      constructor(timestamp) {
+        this.timestamp = timestamp;
+      }
+      static fromTimestamp(value) {
+        return new SnapshotVersion(value);
+      }
+      static min() {
+        return new SnapshotVersion(new Timestamp(0, 0));
+      }
+      static max() {
+        return new SnapshotVersion(new Timestamp(253402300799, 1e9 - 1));
+      }
+      compareTo(other) {
+        return this.timestamp._compareTo(other.timestamp);
+      }
+      isEqual(other) {
+        return this.timestamp.isEqual(other.timestamp);
+      }
+      /** Returns a number representation of the version for use in spec tests. */
+      toMicroseconds() {
+        return this.timestamp.seconds * 1e6 + this.timestamp.nanoseconds / 1e3;
+      }
+      toString() {
+        return "SnapshotVersion(" + this.timestamp.toString() + ")";
+      }
+      toTimestamp() {
+        return this.timestamp;
+      }
+    };
+    DOCUMENT_KEY_NAME = "__name__";
     BasePath = class {
       constructor(segments, offset, length) {
         if (offset === void 0) {
@@ -46510,6 +49913,97 @@ var init_index_node = __esm({
         return new ResourcePath([]);
       }
     };
+    identifierRegExp = /^[_a-zA-Z][_a-zA-Z0-9]*$/;
+    FieldPath$1 = class extends BasePath {
+      construct(segments, offset, length) {
+        return new FieldPath$1(segments, offset, length);
+      }
+      /**
+       * Returns true if the string could be used as a segment in a field path
+       * without escaping.
+       */
+      static isValidIdentifier(segment) {
+        return identifierRegExp.test(segment);
+      }
+      canonicalString() {
+        return this.toArray().map((str) => {
+          str = str.replace(/\\/g, "\\\\").replace(/`/g, "\\`");
+          if (!FieldPath$1.isValidIdentifier(str)) {
+            str = "`" + str + "`";
+          }
+          return str;
+        }).join(".");
+      }
+      toString() {
+        return this.canonicalString();
+      }
+      /**
+       * Returns true if this field references the key of a document.
+       */
+      isKeyField() {
+        return this.length === 1 && this.get(0) === DOCUMENT_KEY_NAME;
+      }
+      /**
+       * The field designating the key of a document.
+       */
+      static keyField() {
+        return new FieldPath$1([DOCUMENT_KEY_NAME]);
+      }
+      /**
+       * Parses a field string from the given server-formatted string.
+       *
+       * - Splitting the empty string is not allowed (for now at least).
+       * - Empty segments within the string (e.g. if there are two consecutive
+       *   separators) are not allowed.
+       *
+       * TODO(b/37244157): we should make this more strict. Right now, it allows
+       * non-identifier path components, even if they aren't escaped.
+       */
+      static fromServerFormat(path) {
+        const segments = [];
+        let current = "";
+        let i = 0;
+        const addCurrentSegment = () => {
+          if (current.length === 0) {
+            throw new FirestoreError(Code.INVALID_ARGUMENT, `Invalid field path (${path}). Paths must not be empty, begin with '.', end with '.', or contain '..'`);
+          }
+          segments.push(current);
+          current = "";
+        };
+        let inBackticks = false;
+        while (i < path.length) {
+          const c = path[i];
+          if (c === "\\") {
+            if (i + 1 === path.length) {
+              throw new FirestoreError(Code.INVALID_ARGUMENT, "Path has trailing escape character: " + path);
+            }
+            const next = path[i + 1];
+            if (!(next === "\\" || next === "." || next === "`")) {
+              throw new FirestoreError(Code.INVALID_ARGUMENT, "Path has invalid escape sequence: " + path);
+            }
+            current += next;
+            i += 2;
+          } else if (c === "`") {
+            inBackticks = !inBackticks;
+            i++;
+          } else if (c === "." && !inBackticks) {
+            addCurrentSegment();
+            i++;
+          } else {
+            current += c;
+            i++;
+          }
+        }
+        addCurrentSegment();
+        if (inBackticks) {
+          throw new FirestoreError(Code.INVALID_ARGUMENT, "Unterminated ` in path: " + path);
+        }
+        return new FieldPath$1(segments);
+      }
+      static emptyPath() {
+        return new FieldPath$1([]);
+      }
+    };
     DocumentKey = class {
       constructor(path) {
         this.path = path;
@@ -46560,6 +50054,7 @@ var init_index_node = __esm({
         return new DocumentKey(new ResourcePath(segments.slice()));
       }
     };
+    INITIAL_LARGEST_BATCH_ID = -1;
     FieldIndex = class {
       constructor(indexId, collectionGroup, fields, indexState) {
         this.indexId = indexId;
@@ -46569,6 +50064,208 @@ var init_index_node = __esm({
       }
     };
     FieldIndex.UNKNOWN_ID = -1;
+    IndexOffset = class {
+      constructor(readTime, documentKey, largestBatchId) {
+        this.readTime = readTime;
+        this.documentKey = documentKey;
+        this.largestBatchId = largestBatchId;
+      }
+      /** Returns an offset that sorts before all regular offsets. */
+      static min() {
+        return new IndexOffset(SnapshotVersion.min(), DocumentKey.empty(), INITIAL_LARGEST_BATCH_ID);
+      }
+      /** Returns an offset that sorts after all regular offsets. */
+      static max() {
+        return new IndexOffset(SnapshotVersion.max(), DocumentKey.empty(), INITIAL_LARGEST_BATCH_ID);
+      }
+    };
+    PRIMARY_LEASE_LOST_ERROR_MSG = "The current tab is not in the required state to perform this operation. It might be necessary to refresh the browser tab.";
+    PersistenceTransaction = class {
+      constructor() {
+        this.onCommittedListeners = [];
+      }
+      addOnCommittedListener(listener) {
+        this.onCommittedListeners.push(listener);
+      }
+      raiseOnCommittedEvent() {
+        this.onCommittedListeners.forEach((listener) => listener());
+      }
+    };
+    PersistencePromise = class {
+      constructor(callback) {
+        this.nextCallback = null;
+        this.catchCallback = null;
+        this.result = void 0;
+        this.error = void 0;
+        this.isDone = false;
+        this.callbackAttached = false;
+        callback((value) => {
+          this.isDone = true;
+          this.result = value;
+          if (this.nextCallback) {
+            this.nextCallback(value);
+          }
+        }, (error2) => {
+          this.isDone = true;
+          this.error = error2;
+          if (this.catchCallback) {
+            this.catchCallback(error2);
+          }
+        });
+      }
+      catch(fn) {
+        return this.next(void 0, fn);
+      }
+      next(nextFn, catchFn) {
+        if (this.callbackAttached) {
+          fail();
+        }
+        this.callbackAttached = true;
+        if (this.isDone) {
+          if (!this.error) {
+            return this.wrapSuccess(nextFn, this.result);
+          } else {
+            return this.wrapFailure(catchFn, this.error);
+          }
+        } else {
+          return new PersistencePromise((resolve, reject) => {
+            this.nextCallback = (value) => {
+              this.wrapSuccess(nextFn, value).next(resolve, reject);
+            };
+            this.catchCallback = (error2) => {
+              this.wrapFailure(catchFn, error2).next(resolve, reject);
+            };
+          });
+        }
+      }
+      toPromise() {
+        return new Promise((resolve, reject) => {
+          this.next(resolve, reject);
+        });
+      }
+      wrapUserFunction(fn) {
+        try {
+          const result = fn();
+          if (result instanceof PersistencePromise) {
+            return result;
+          } else {
+            return PersistencePromise.resolve(result);
+          }
+        } catch (e) {
+          return PersistencePromise.reject(e);
+        }
+      }
+      wrapSuccess(nextFn, value) {
+        if (nextFn) {
+          return this.wrapUserFunction(() => nextFn(value));
+        } else {
+          return PersistencePromise.resolve(value);
+        }
+      }
+      wrapFailure(catchFn, error2) {
+        if (catchFn) {
+          return this.wrapUserFunction(() => catchFn(error2));
+        } else {
+          return PersistencePromise.reject(error2);
+        }
+      }
+      static resolve(result) {
+        return new PersistencePromise((resolve, reject) => {
+          resolve(result);
+        });
+      }
+      static reject(error2) {
+        return new PersistencePromise((resolve, reject) => {
+          reject(error2);
+        });
+      }
+      static waitFor(all) {
+        return new PersistencePromise((resolve, reject) => {
+          let expectedCount = 0;
+          let resolvedCount = 0;
+          let done = false;
+          all.forEach((element) => {
+            ++expectedCount;
+            element.next(() => {
+              ++resolvedCount;
+              if (done && resolvedCount === expectedCount) {
+                resolve();
+              }
+            }, (err) => reject(err));
+          });
+          done = true;
+          if (resolvedCount === expectedCount) {
+            resolve();
+          }
+        });
+      }
+      /**
+       * Given an array of predicate functions that asynchronously evaluate to a
+       * boolean, implements a short-circuiting `or` between the results. Predicates
+       * will be evaluated until one of them returns `true`, then stop. The final
+       * result will be whether any of them returned `true`.
+       */
+      static or(predicates) {
+        let p2 = PersistencePromise.resolve(false);
+        for (const predicate of predicates) {
+          p2 = p2.next((isTrue) => {
+            if (isTrue) {
+              return PersistencePromise.resolve(isTrue);
+            } else {
+              return predicate();
+            }
+          });
+        }
+        return p2;
+      }
+      static forEach(collection, f) {
+        const promises = [];
+        collection.forEach((r2, s2) => {
+          promises.push(f.call(this, r2, s2));
+        });
+        return this.waitFor(promises);
+      }
+      /**
+       * Concurrently map all array elements through asynchronous function.
+       */
+      static mapArray(array2, f) {
+        return new PersistencePromise((resolve, reject) => {
+          const expectedCount = array2.length;
+          const results = new Array(expectedCount);
+          let resolvedCount = 0;
+          for (let i = 0; i < expectedCount; i++) {
+            const current = i;
+            f(array2[current]).next((result) => {
+              results[current] = result;
+              ++resolvedCount;
+              if (resolvedCount === expectedCount) {
+                resolve(results);
+              }
+            }, (err) => reject(err));
+          }
+        });
+      }
+      /**
+       * An alternative to recursive PersistencePromise calls, that avoids
+       * potential memory problems from unbounded chains of promises.
+       *
+       * The `action` will be called repeatedly while `condition` is true.
+       */
+      static doWhile(condition, action) {
+        return new PersistencePromise((resolve, reject) => {
+          const process3 = () => {
+            if (condition() === true) {
+              action().next(() => {
+                process3();
+              }, reject);
+            } else {
+              resolve();
+            }
+          };
+          process3();
+        });
+      }
+    };
     INITIAL_BACKFILL_DELAY_MS = 15 * 1e3;
     REGULAR_BACKFILL_DELAY_MS = 60 * 1e3;
     ListenSequence = class {
@@ -47186,6 +50883,46 @@ var init_index_node = __esm({
         return this.iter.hasNext();
       }
     };
+    FieldMask = class {
+      constructor(fields) {
+        this.fields = fields;
+        fields.sort(FieldPath$1.comparator);
+      }
+      static empty() {
+        return new FieldMask([]);
+      }
+      /**
+       * Returns a new FieldMask object that is the result of adding all the given
+       * fields paths to this field mask.
+       */
+      unionWith(extraFields) {
+        let mergedMaskSet = new SortedSet(FieldPath$1.comparator);
+        for (const fieldPath of this.fields) {
+          mergedMaskSet = mergedMaskSet.add(fieldPath);
+        }
+        for (const fieldPath of extraFields) {
+          mergedMaskSet = mergedMaskSet.add(fieldPath);
+        }
+        return new FieldMask(mergedMaskSet.toArray());
+      }
+      /**
+       * Verifies that `fieldPath` is included by at least one field in this field
+       * mask.
+       *
+       * This is an O(n) operation, where `n` is the size of the field mask.
+       */
+      covers(fieldPath) {
+        for (const fieldMaskPath of this.fields) {
+          if (fieldMaskPath.isPrefixOf(fieldPath)) {
+            return true;
+          }
+        }
+        return false;
+      }
+      isEqual(other) {
+        return arrayEquals(this.fields, other.fields, (l2, r2) => l2.isEqual(r2));
+      }
+    };
     ByteString = class {
       constructor(binaryString) {
         this.binaryString = binaryString;
@@ -47228,6 +50965,10 @@ var init_index_node = __esm({
     };
     ByteString.EMPTY_BYTE_STRING = new ByteString("");
     ISO_TIMESTAMP_REG_EXP = new RegExp(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.(\d+))?Z$/);
+    SERVER_TIMESTAMP_SENTINEL = "server_timestamp";
+    TYPE_KEY = "__type__";
+    PREVIOUS_VALUE_KEY = "__previous_value__";
+    LOCAL_WRITE_TIME_KEY = "__local_write_time__";
     DatabaseInfo = class {
       /**
        * Constructs a DatabaseInfo using the provided host, databaseId and
@@ -47275,12 +51016,829 @@ var init_index_node = __esm({
         return other instanceof DatabaseId && other.projectId === this.projectId && other.database === this.database;
       }
     };
+    BATCHID_UNKNOWN = -1;
     MAX_VALUE_TYPE = "__max__";
+    MAX_VALUE = {
+      mapValue: {
+        fields: {
+          "__type__": { stringValue: MAX_VALUE_TYPE }
+        }
+      }
+    };
+    ObjectValue = class {
+      constructor(value) {
+        this.value = value;
+      }
+      static empty() {
+        return new ObjectValue({ mapValue: {} });
+      }
+      /**
+       * Returns the value at the given path or null.
+       *
+       * @param path - the path to search
+       * @returns The value at the path or null if the path is not set.
+       */
+      field(path) {
+        if (path.isEmpty()) {
+          return this.value;
+        } else {
+          let currentLevel = this.value;
+          for (let i = 0; i < path.length - 1; ++i) {
+            currentLevel = (currentLevel.mapValue.fields || {})[path.get(i)];
+            if (!isMapValue(currentLevel)) {
+              return null;
+            }
+          }
+          currentLevel = (currentLevel.mapValue.fields || {})[path.lastSegment()];
+          return currentLevel || null;
+        }
+      }
+      /**
+       * Sets the field to the provided value.
+       *
+       * @param path - The field path to set.
+       * @param value - The value to set.
+       */
+      set(path, value) {
+        const fieldsMap = this.getFieldsMap(path.popLast());
+        fieldsMap[path.lastSegment()] = deepClone(value);
+      }
+      /**
+       * Sets the provided fields to the provided values.
+       *
+       * @param data - A map of fields to values (or null for deletes).
+       */
+      setAll(data) {
+        let parent = FieldPath$1.emptyPath();
+        let upserts = {};
+        let deletes = [];
+        data.forEach((value, path) => {
+          if (!parent.isImmediateParentOf(path)) {
+            const fieldsMap2 = this.getFieldsMap(parent);
+            this.applyChanges(fieldsMap2, upserts, deletes);
+            upserts = {};
+            deletes = [];
+            parent = path.popLast();
+          }
+          if (value) {
+            upserts[path.lastSegment()] = deepClone(value);
+          } else {
+            deletes.push(path.lastSegment());
+          }
+        });
+        const fieldsMap = this.getFieldsMap(parent);
+        this.applyChanges(fieldsMap, upserts, deletes);
+      }
+      /**
+       * Removes the field at the specified path. If there is no field at the
+       * specified path, nothing is changed.
+       *
+       * @param path - The field path to remove.
+       */
+      delete(path) {
+        const nestedValue = this.field(path.popLast());
+        if (isMapValue(nestedValue) && nestedValue.mapValue.fields) {
+          delete nestedValue.mapValue.fields[path.lastSegment()];
+        }
+      }
+      isEqual(other) {
+        return valueEquals(this.value, other.value);
+      }
+      /**
+       * Returns the map that contains the leaf element of `path`. If the parent
+       * entry does not yet exist, or if it is not a map, a new map will be created.
+       */
+      getFieldsMap(path) {
+        let current = this.value;
+        if (!current.mapValue.fields) {
+          current.mapValue = { fields: {} };
+        }
+        for (let i = 0; i < path.length; ++i) {
+          let next = current.mapValue.fields[path.get(i)];
+          if (!isMapValue(next) || !next.mapValue.fields) {
+            next = { mapValue: { fields: {} } };
+            current.mapValue.fields[path.get(i)] = next;
+          }
+          current = next;
+        }
+        return current.mapValue.fields;
+      }
+      /**
+       * Modifies `fieldsMap` by adding, replacing or deleting the specified
+       * entries.
+       */
+      applyChanges(fieldsMap, inserts, deletes) {
+        forEach(inserts, (key2, val) => fieldsMap[key2] = val);
+        for (const field of deletes) {
+          delete fieldsMap[field];
+        }
+      }
+      clone() {
+        return new ObjectValue(deepClone(this.value));
+      }
+    };
+    MutableDocument = class {
+      constructor(key2, documentType, version5, readTime, createTime, data, documentState) {
+        this.key = key2;
+        this.documentType = documentType;
+        this.version = version5;
+        this.readTime = readTime;
+        this.createTime = createTime;
+        this.data = data;
+        this.documentState = documentState;
+      }
+      /**
+       * Creates a document with no known version or data, but which can serve as
+       * base document for mutations.
+       */
+      static newInvalidDocument(documentKey) {
+        return new MutableDocument(
+          documentKey,
+          0,
+          /* version */
+          SnapshotVersion.min(),
+          /* readTime */
+          SnapshotVersion.min(),
+          /* createTime */
+          SnapshotVersion.min(),
+          ObjectValue.empty(),
+          0
+          /* DocumentState.SYNCED */
+        );
+      }
+      /**
+       * Creates a new document that is known to exist with the given data at the
+       * given version.
+       */
+      static newFoundDocument(documentKey, version5, createTime, value) {
+        return new MutableDocument(
+          documentKey,
+          1,
+          /* version */
+          version5,
+          /* readTime */
+          SnapshotVersion.min(),
+          /* createTime */
+          createTime,
+          value,
+          0
+          /* DocumentState.SYNCED */
+        );
+      }
+      /** Creates a new document that is known to not exist at the given version. */
+      static newNoDocument(documentKey, version5) {
+        return new MutableDocument(
+          documentKey,
+          2,
+          /* version */
+          version5,
+          /* readTime */
+          SnapshotVersion.min(),
+          /* createTime */
+          SnapshotVersion.min(),
+          ObjectValue.empty(),
+          0
+          /* DocumentState.SYNCED */
+        );
+      }
+      /**
+       * Creates a new document that is known to exist at the given version but
+       * whose data is not known (e.g. a document that was updated without a known
+       * base document).
+       */
+      static newUnknownDocument(documentKey, version5) {
+        return new MutableDocument(
+          documentKey,
+          3,
+          /* version */
+          version5,
+          /* readTime */
+          SnapshotVersion.min(),
+          /* createTime */
+          SnapshotVersion.min(),
+          ObjectValue.empty(),
+          2
+          /* DocumentState.HAS_COMMITTED_MUTATIONS */
+        );
+      }
+      /**
+       * Changes the document type to indicate that it exists and that its version
+       * and data are known.
+       */
+      convertToFoundDocument(version5, value) {
+        if (this.createTime.isEqual(SnapshotVersion.min()) && (this.documentType === 2 || this.documentType === 0)) {
+          this.createTime = version5;
+        }
+        this.version = version5;
+        this.documentType = 1;
+        this.data = value;
+        this.documentState = 0;
+        return this;
+      }
+      /**
+       * Changes the document type to indicate that it doesn't exist at the given
+       * version.
+       */
+      convertToNoDocument(version5) {
+        this.version = version5;
+        this.documentType = 2;
+        this.data = ObjectValue.empty();
+        this.documentState = 0;
+        return this;
+      }
+      /**
+       * Changes the document type to indicate that it exists at a given version but
+       * that its data is not known (e.g. a document that was updated without a known
+       * base document).
+       */
+      convertToUnknownDocument(version5) {
+        this.version = version5;
+        this.documentType = 3;
+        this.data = ObjectValue.empty();
+        this.documentState = 2;
+        return this;
+      }
+      setHasCommittedMutations() {
+        this.documentState = 2;
+        return this;
+      }
+      setHasLocalMutations() {
+        this.documentState = 1;
+        this.version = SnapshotVersion.min();
+        return this;
+      }
+      setReadTime(readTime) {
+        this.readTime = readTime;
+        return this;
+      }
+      get hasLocalMutations() {
+        return this.documentState === 1;
+      }
+      get hasCommittedMutations() {
+        return this.documentState === 2;
+      }
+      get hasPendingWrites() {
+        return this.hasLocalMutations || this.hasCommittedMutations;
+      }
+      isValidDocument() {
+        return this.documentType !== 0;
+      }
+      isFoundDocument() {
+        return this.documentType === 1;
+      }
+      isNoDocument() {
+        return this.documentType === 2;
+      }
+      isUnknownDocument() {
+        return this.documentType === 3;
+      }
+      isEqual(other) {
+        return other instanceof MutableDocument && this.key.isEqual(other.key) && this.version.isEqual(other.version) && this.documentType === other.documentType && this.documentState === other.documentState && this.data.isEqual(other.data);
+      }
+      mutableCopy() {
+        return new MutableDocument(this.key, this.documentType, this.version, this.readTime, this.createTime, this.data.clone(), this.documentState);
+      }
+      toString() {
+        return `Document(${this.key}, ${this.version}, ${JSON.stringify(this.data.value)}, {createTime: ${this.createTime}}), {documentType: ${this.documentType}}), {documentState: ${this.documentState}})`;
+      }
+    };
+    Bound = class {
+      constructor(position, inclusive) {
+        this.position = position;
+        this.inclusive = inclusive;
+      }
+    };
+    OrderBy = class {
+      constructor(field, dir = "asc") {
+        this.field = field;
+        this.dir = dir;
+      }
+    };
+    Filter = class {
+    };
+    FieldFilter = class extends Filter {
+      constructor(field, op, value) {
+        super();
+        this.field = field;
+        this.op = op;
+        this.value = value;
+      }
+      /**
+       * Creates a filter based on the provided arguments.
+       */
+      static create(field, op, value) {
+        if (field.isKeyField()) {
+          if (op === "in" || op === "not-in") {
+            return this.createKeyFieldInFilter(field, op, value);
+          } else {
+            return new KeyFieldFilter(field, op, value);
+          }
+        } else if (op === "array-contains") {
+          return new ArrayContainsFilter(field, value);
+        } else if (op === "in") {
+          return new InFilter(field, value);
+        } else if (op === "not-in") {
+          return new NotInFilter(field, value);
+        } else if (op === "array-contains-any") {
+          return new ArrayContainsAnyFilter(field, value);
+        } else {
+          return new FieldFilter(field, op, value);
+        }
+      }
+      static createKeyFieldInFilter(field, op, value) {
+        return op === "in" ? new KeyFieldInFilter(field, value) : new KeyFieldNotInFilter(field, value);
+      }
+      matches(doc2) {
+        const other = doc2.data.field(this.field);
+        if (this.op === "!=") {
+          return other !== null && this.matchesComparison(valueCompare(other, this.value));
+        }
+        return other !== null && typeOrder(this.value) === typeOrder(other) && this.matchesComparison(valueCompare(other, this.value));
+      }
+      matchesComparison(comparison) {
+        switch (this.op) {
+          case "<":
+            return comparison < 0;
+          case "<=":
+            return comparison <= 0;
+          case "==":
+            return comparison === 0;
+          case "!=":
+            return comparison !== 0;
+          case ">":
+            return comparison > 0;
+          case ">=":
+            return comparison >= 0;
+          default:
+            return fail();
+        }
+      }
+      isInequality() {
+        return [
+          "<",
+          "<=",
+          ">",
+          ">=",
+          "!=",
+          "not-in"
+          /* Operator.NOT_IN */
+        ].indexOf(this.op) >= 0;
+      }
+      getFlattenedFilters() {
+        return [this];
+      }
+      getFilters() {
+        return [this];
+      }
+      getFirstInequalityField() {
+        if (this.isInequality()) {
+          return this.field;
+        }
+        return null;
+      }
+    };
+    CompositeFilter = class extends Filter {
+      constructor(filters, op) {
+        super();
+        this.filters = filters;
+        this.op = op;
+        this.memoizedFlattenedFilters = null;
+      }
+      /**
+       * Creates a filter based on the provided arguments.
+       */
+      static create(filters, op) {
+        return new CompositeFilter(filters, op);
+      }
+      matches(doc2) {
+        if (compositeFilterIsConjunction(this)) {
+          return this.filters.find((filter) => !filter.matches(doc2)) === void 0;
+        } else {
+          return this.filters.find((filter) => filter.matches(doc2)) !== void 0;
+        }
+      }
+      getFlattenedFilters() {
+        if (this.memoizedFlattenedFilters !== null) {
+          return this.memoizedFlattenedFilters;
+        }
+        this.memoizedFlattenedFilters = this.filters.reduce((result, subfilter) => {
+          return result.concat(subfilter.getFlattenedFilters());
+        }, []);
+        return this.memoizedFlattenedFilters;
+      }
+      // Returns a mutable copy of `this.filters`
+      getFilters() {
+        return Object.assign([], this.filters);
+      }
+      getFirstInequalityField() {
+        const found = this.findFirstMatchingFilter((filter) => filter.isInequality());
+        if (found !== null) {
+          return found.field;
+        }
+        return null;
+      }
+      // Performs a depth-first search to find and return the first FieldFilter in the composite filter
+      // that satisfies the predicate. Returns `null` if none of the FieldFilters satisfy the
+      // predicate.
+      findFirstMatchingFilter(predicate) {
+        for (const fieldFilter of this.getFlattenedFilters()) {
+          if (predicate(fieldFilter)) {
+            return fieldFilter;
+          }
+        }
+        return null;
+      }
+    };
+    KeyFieldFilter = class extends FieldFilter {
+      constructor(field, op, value) {
+        super(field, op, value);
+        this.key = DocumentKey.fromName(value.referenceValue);
+      }
+      matches(doc2) {
+        const comparison = DocumentKey.comparator(doc2.key, this.key);
+        return this.matchesComparison(comparison);
+      }
+    };
+    KeyFieldInFilter = class extends FieldFilter {
+      constructor(field, value) {
+        super(field, "in", value);
+        this.keys = extractDocumentKeysFromArrayValue("in", value);
+      }
+      matches(doc2) {
+        return this.keys.some((key2) => key2.isEqual(doc2.key));
+      }
+    };
+    KeyFieldNotInFilter = class extends FieldFilter {
+      constructor(field, value) {
+        super(field, "not-in", value);
+        this.keys = extractDocumentKeysFromArrayValue("not-in", value);
+      }
+      matches(doc2) {
+        return !this.keys.some((key2) => key2.isEqual(doc2.key));
+      }
+    };
+    ArrayContainsFilter = class extends FieldFilter {
+      constructor(field, value) {
+        super(field, "array-contains", value);
+      }
+      matches(doc2) {
+        const other = doc2.data.field(this.field);
+        return isArray(other) && arrayValueContains(other.arrayValue, this.value);
+      }
+    };
+    InFilter = class extends FieldFilter {
+      constructor(field, value) {
+        super(field, "in", value);
+      }
+      matches(doc2) {
+        const other = doc2.data.field(this.field);
+        return other !== null && arrayValueContains(this.value.arrayValue, other);
+      }
+    };
+    NotInFilter = class extends FieldFilter {
+      constructor(field, value) {
+        super(field, "not-in", value);
+      }
+      matches(doc2) {
+        if (arrayValueContains(this.value.arrayValue, { nullValue: "NULL_VALUE" })) {
+          return false;
+        }
+        const other = doc2.data.field(this.field);
+        return other !== null && !arrayValueContains(this.value.arrayValue, other);
+      }
+    };
+    ArrayContainsAnyFilter = class extends FieldFilter {
+      constructor(field, value) {
+        super(field, "array-contains-any", value);
+      }
+      matches(doc2) {
+        const other = doc2.data.field(this.field);
+        if (!isArray(other) || !other.arrayValue.values) {
+          return false;
+        }
+        return other.arrayValue.values.some((val) => arrayValueContains(this.value.arrayValue, val));
+      }
+    };
+    TargetImpl = class {
+      constructor(path, collectionGroup = null, orderBy = [], filters = [], limit = null, startAt = null, endAt = null) {
+        this.path = path;
+        this.collectionGroup = collectionGroup;
+        this.orderBy = orderBy;
+        this.filters = filters;
+        this.limit = limit;
+        this.startAt = startAt;
+        this.endAt = endAt;
+        this.memoizedCanonicalId = null;
+      }
+    };
+    QueryImpl = class {
+      /**
+       * Initializes a Query with a path and optional additional query constraints.
+       * Path must currently be empty if this is a collection group query.
+       */
+      constructor(path, collectionGroup = null, explicitOrderBy = [], filters = [], limit = null, limitType = "F", startAt = null, endAt = null) {
+        this.path = path;
+        this.collectionGroup = collectionGroup;
+        this.explicitOrderBy = explicitOrderBy;
+        this.filters = filters;
+        this.limit = limit;
+        this.limitType = limitType;
+        this.startAt = startAt;
+        this.endAt = endAt;
+        this.memoizedNormalizedOrderBy = null;
+        this.memoizedTarget = null;
+        this.memoizedAggregateTarget = null;
+        if (this.startAt)
+          ;
+        if (this.endAt)
+          ;
+      }
+    };
+    ObjectMap = class {
+      constructor(mapKeyFn, equalsFn) {
+        this.mapKeyFn = mapKeyFn;
+        this.equalsFn = equalsFn;
+        this.inner = {};
+        this.innerSize = 0;
+      }
+      /** Get a value for this key, or undefined if it does not exist. */
+      get(key2) {
+        const id2 = this.mapKeyFn(key2);
+        const matches = this.inner[id2];
+        if (matches === void 0) {
+          return void 0;
+        }
+        for (const [otherKey, value] of matches) {
+          if (this.equalsFn(otherKey, key2)) {
+            return value;
+          }
+        }
+        return void 0;
+      }
+      has(key2) {
+        return this.get(key2) !== void 0;
+      }
+      /** Put this key and value in the map. */
+      set(key2, value) {
+        const id2 = this.mapKeyFn(key2);
+        const matches = this.inner[id2];
+        if (matches === void 0) {
+          this.inner[id2] = [[key2, value]];
+          this.innerSize++;
+          return;
+        }
+        for (let i = 0; i < matches.length; i++) {
+          if (this.equalsFn(matches[i][0], key2)) {
+            matches[i] = [key2, value];
+            return;
+          }
+        }
+        matches.push([key2, value]);
+        this.innerSize++;
+      }
+      /**
+       * Remove this key from the map. Returns a boolean if anything was deleted.
+       */
+      delete(key2) {
+        const id2 = this.mapKeyFn(key2);
+        const matches = this.inner[id2];
+        if (matches === void 0) {
+          return false;
+        }
+        for (let i = 0; i < matches.length; i++) {
+          if (this.equalsFn(matches[i][0], key2)) {
+            if (matches.length === 1) {
+              delete this.inner[id2];
+            } else {
+              matches.splice(i, 1);
+            }
+            this.innerSize--;
+            return true;
+          }
+        }
+        return false;
+      }
+      forEach(fn) {
+        forEach(this.inner, (_, entries) => {
+          for (const [k2, v2] of entries) {
+            fn(k2, v2);
+          }
+        });
+      }
+      isEmpty() {
+        return isEmpty(this.inner);
+      }
+      size() {
+        return this.innerSize;
+      }
+    };
     EMPTY_MUTABLE_DOCUMENT_MAP = new SortedMap(DocumentKey.comparator);
     EMPTY_DOCUMENT_MAP = new SortedMap(DocumentKey.comparator);
     EMPTY_DOCUMENT_VERSION_MAP = new SortedMap(DocumentKey.comparator);
     EMPTY_DOCUMENT_KEY_SET = new SortedSet(DocumentKey.comparator);
     EMPTY_TARGET_ID_SET = new SortedSet(primitiveComparator);
+    TransformOperation = class {
+      constructor() {
+        this._ = void 0;
+      }
+    };
+    ServerTimestampTransform = class extends TransformOperation {
+    };
+    ArrayUnionTransformOperation = class extends TransformOperation {
+      constructor(elements) {
+        super();
+        this.elements = elements;
+      }
+    };
+    ArrayRemoveTransformOperation = class extends TransformOperation {
+      constructor(elements) {
+        super();
+        this.elements = elements;
+      }
+    };
+    NumericIncrementTransformOperation = class extends TransformOperation {
+      constructor(serializer, operand) {
+        super();
+        this.serializer = serializer;
+        this.operand = operand;
+      }
+    };
+    Precondition = class {
+      constructor(updateTime, exists) {
+        this.updateTime = updateTime;
+        this.exists = exists;
+      }
+      /** Creates a new empty Precondition. */
+      static none() {
+        return new Precondition();
+      }
+      /** Creates a new Precondition with an exists flag. */
+      static exists(exists) {
+        return new Precondition(void 0, exists);
+      }
+      /** Creates a new Precondition based on a version a document exists at. */
+      static updateTime(version5) {
+        return new Precondition(version5);
+      }
+      /** Returns whether this Precondition is empty. */
+      get isNone() {
+        return this.updateTime === void 0 && this.exists === void 0;
+      }
+      isEqual(other) {
+        return this.exists === other.exists && (this.updateTime ? !!other.updateTime && this.updateTime.isEqual(other.updateTime) : !other.updateTime);
+      }
+    };
+    Mutation = class {
+    };
+    SetMutation = class extends Mutation {
+      constructor(key2, value, precondition, fieldTransforms = []) {
+        super();
+        this.key = key2;
+        this.value = value;
+        this.precondition = precondition;
+        this.fieldTransforms = fieldTransforms;
+        this.type = 0;
+      }
+      getFieldMask() {
+        return null;
+      }
+    };
+    PatchMutation = class extends Mutation {
+      constructor(key2, data, fieldMask, precondition, fieldTransforms = []) {
+        super();
+        this.key = key2;
+        this.data = data;
+        this.fieldMask = fieldMask;
+        this.precondition = precondition;
+        this.fieldTransforms = fieldTransforms;
+        this.type = 1;
+      }
+      getFieldMask() {
+        return this.fieldMask;
+      }
+    };
+    DeleteMutation = class extends Mutation {
+      constructor(key2, precondition) {
+        super();
+        this.key = key2;
+        this.precondition = precondition;
+        this.type = 2;
+        this.fieldTransforms = [];
+      }
+      getFieldMask() {
+        return null;
+      }
+    };
+    MutationBatch = class {
+      /**
+       * @param batchId - The unique ID of this mutation batch.
+       * @param localWriteTime - The original write time of this mutation.
+       * @param baseMutations - Mutations that are used to populate the base
+       * values when this mutation is applied locally. This can be used to locally
+       * overwrite values that are persisted in the remote document cache. Base
+       * mutations are never sent to the backend.
+       * @param mutations - The user-provided mutations in this mutation batch.
+       * User-provided mutations are applied both locally and remotely on the
+       * backend.
+       */
+      constructor(batchId, localWriteTime, baseMutations, mutations) {
+        this.batchId = batchId;
+        this.localWriteTime = localWriteTime;
+        this.baseMutations = baseMutations;
+        this.mutations = mutations;
+      }
+      /**
+       * Applies all the mutations in this MutationBatch to the specified document
+       * to compute the state of the remote document
+       *
+       * @param document - The document to apply mutations to.
+       * @param batchResult - The result of applying the MutationBatch to the
+       * backend.
+       */
+      applyToRemoteDocument(document2, batchResult) {
+        const mutationResults = batchResult.mutationResults;
+        for (let i = 0; i < this.mutations.length; i++) {
+          const mutation = this.mutations[i];
+          if (mutation.key.isEqual(document2.key)) {
+            const mutationResult = mutationResults[i];
+            mutationApplyToRemoteDocument(mutation, document2, mutationResult);
+          }
+        }
+      }
+      /**
+       * Computes the local view of a document given all the mutations in this
+       * batch.
+       *
+       * @param document - The document to apply mutations to.
+       * @param mutatedFields - Fields that have been updated before applying this mutation batch.
+       * @returns A `FieldMask` representing all the fields that are mutated.
+       */
+      applyToLocalView(document2, mutatedFields) {
+        for (const mutation of this.baseMutations) {
+          if (mutation.key.isEqual(document2.key)) {
+            mutatedFields = mutationApplyToLocalView(mutation, document2, mutatedFields, this.localWriteTime);
+          }
+        }
+        for (const mutation of this.mutations) {
+          if (mutation.key.isEqual(document2.key)) {
+            mutatedFields = mutationApplyToLocalView(mutation, document2, mutatedFields, this.localWriteTime);
+          }
+        }
+        return mutatedFields;
+      }
+      /**
+       * Computes the local view for all provided documents given the mutations in
+       * this batch. Returns a `DocumentKey` to `Mutation` map which can be used to
+       * replace all the mutation applications.
+       */
+      applyToLocalDocumentSet(documentMap2, documentsWithoutRemoteVersion) {
+        const overlays = newMutationMap();
+        this.mutations.forEach((m) => {
+          const overlayedDocument = documentMap2.get(m.key);
+          const mutableDocument = overlayedDocument.overlayedDocument;
+          let mutatedFields = this.applyToLocalView(mutableDocument, overlayedDocument.mutatedFields);
+          mutatedFields = documentsWithoutRemoteVersion.has(m.key) ? null : mutatedFields;
+          const overlay = calculateOverlayMutation(mutableDocument, mutatedFields);
+          if (overlay !== null) {
+            overlays.set(m.key, overlay);
+          }
+          if (!mutableDocument.isValidDocument()) {
+            mutableDocument.convertToNoDocument(SnapshotVersion.min());
+          }
+        });
+        return overlays;
+      }
+      keys() {
+        return this.mutations.reduce((keys, m) => keys.add(m.key), documentKeySet());
+      }
+      isEqual(other) {
+        return this.batchId === other.batchId && arrayEquals(this.mutations, other.mutations, (l2, r2) => mutationEquals(l2, r2)) && arrayEquals(this.baseMutations, other.baseMutations, (l2, r2) => mutationEquals(l2, r2));
+      }
+    };
+    Overlay = class {
+      constructor(largestBatchId, mutation) {
+        this.largestBatchId = largestBatchId;
+        this.mutation = mutation;
+      }
+      getKey() {
+        return this.mutation.key;
+      }
+      isEqual(other) {
+        return other !== null && this.mutation === other.mutation;
+      }
+      toString() {
+        return `Overlay{
+      largestBatchId: ${this.largestBatchId},
+      mutation: ${this.mutation.toString()}
+    }`;
+      }
+    };
+    ExistenceFilter = class {
+      constructor(count, unchangedNames) {
+        this.count = count;
+        this.unchangedNames = unchangedNames;
+      }
+    };
     (function(RpcCode2) {
       RpcCode2[RpcCode2["OK"] = 0] = "OK";
       RpcCode2[RpcCode2["CANCELLED"] = 1] = "CANCELLED";
@@ -47300,7 +51858,597 @@ var init_index_node = __esm({
       RpcCode2[RpcCode2["UNAVAILABLE"] = 14] = "UNAVAILABLE";
       RpcCode2[RpcCode2["DATA_LOSS"] = 15] = "DATA_LOSS";
     })(RpcCode || (RpcCode = {}));
+    Base64DecodeError = class extends Error {
+      constructor() {
+        super(...arguments);
+        this.name = "Base64DecodeError";
+      }
+    };
+    testingHooksSpi = null;
     MAX_64_BIT_UNSIGNED_INTEGER = new Integer([4294967295, 4294967295], 0);
+    BloomFilter = class {
+      constructor(bitmap, padding, hashCount) {
+        this.bitmap = bitmap;
+        this.padding = padding;
+        this.hashCount = hashCount;
+        if (padding < 0 || padding >= 8) {
+          throw new BloomFilterError(`Invalid padding: ${padding}`);
+        }
+        if (hashCount < 0) {
+          throw new BloomFilterError(`Invalid hash count: ${hashCount}`);
+        }
+        if (bitmap.length > 0 && this.hashCount === 0) {
+          throw new BloomFilterError(`Invalid hash count: ${hashCount}`);
+        }
+        if (bitmap.length === 0 && padding !== 0) {
+          throw new BloomFilterError(`Invalid padding when bitmap length is 0: ${padding}`);
+        }
+        this.bitCount = bitmap.length * 8 - padding;
+        this.bitCountInInteger = Integer.fromNumber(this.bitCount);
+      }
+      // Calculate the ith hash value based on the hashed 64bit integers,
+      // and calculate its corresponding bit index in the bitmap to be checked.
+      getBitIndex(num1, num2, hashIndex) {
+        let hashValue = num1.add(num2.multiply(Integer.fromNumber(hashIndex)));
+        if (hashValue.compare(MAX_64_BIT_UNSIGNED_INTEGER) === 1) {
+          hashValue = new Integer([hashValue.getBits(0), hashValue.getBits(1)], 0);
+        }
+        return hashValue.modulo(this.bitCountInInteger).toNumber();
+      }
+      // Return whether the bit on the given index in the bitmap is set to 1.
+      isBitSet(index16) {
+        const byte = this.bitmap[Math.floor(index16 / 8)];
+        const offset = index16 % 8;
+        return (byte & 1 << offset) !== 0;
+      }
+      mightContain(value) {
+        if (this.bitCount === 0) {
+          return false;
+        }
+        const md5HashedValue = getMd5HashValue(value);
+        const [hash1, hash2] = get64BitUints(md5HashedValue);
+        for (let i = 0; i < this.hashCount; i++) {
+          const index16 = this.getBitIndex(hash1, hash2, i);
+          if (!this.isBitSet(index16)) {
+            return false;
+          }
+        }
+        return true;
+      }
+      /** Create bloom filter for testing purposes only. */
+      static create(bitCount, hashCount, contains) {
+        const padding = bitCount % 8 === 0 ? 0 : 8 - bitCount % 8;
+        const bitmap = new Uint8Array(Math.ceil(bitCount / 8));
+        const bloomFilter = new BloomFilter(bitmap, padding, hashCount);
+        contains.forEach((item) => bloomFilter.insert(item));
+        return bloomFilter;
+      }
+      insert(value) {
+        if (this.bitCount === 0) {
+          return;
+        }
+        const md5HashedValue = getMd5HashValue(value);
+        const [hash1, hash2] = get64BitUints(md5HashedValue);
+        for (let i = 0; i < this.hashCount; i++) {
+          const index16 = this.getBitIndex(hash1, hash2, i);
+          this.setBit(index16);
+        }
+      }
+      setBit(index16) {
+        const indexOfByte = Math.floor(index16 / 8);
+        const offset = index16 % 8;
+        this.bitmap[indexOfByte] |= 1 << offset;
+      }
+    };
+    BloomFilterError = class extends Error {
+      constructor() {
+        super(...arguments);
+        this.name = "BloomFilterError";
+      }
+    };
+    RemoteEvent = class {
+      constructor(snapshotVersion, targetChanges, targetMismatches, documentUpdates, resolvedLimboDocuments) {
+        this.snapshotVersion = snapshotVersion;
+        this.targetChanges = targetChanges;
+        this.targetMismatches = targetMismatches;
+        this.documentUpdates = documentUpdates;
+        this.resolvedLimboDocuments = resolvedLimboDocuments;
+      }
+      /**
+       * HACK: Views require RemoteEvents in order to determine whether the view is
+       * CURRENT, but secondary tabs don't receive remote events. So this method is
+       * used to create a synthesized RemoteEvent that can be used to apply a
+       * CURRENT status change to a View, for queries executed in a different tab.
+       */
+      // PORTING NOTE: Multi-tab only
+      static createSynthesizedRemoteEventForCurrentChange(targetId, current, resumeToken) {
+        const targetChanges = /* @__PURE__ */ new Map();
+        targetChanges.set(targetId, TargetChange.createSynthesizedTargetChangeForCurrentChange(targetId, current, resumeToken));
+        return new RemoteEvent(SnapshotVersion.min(), targetChanges, new SortedMap(primitiveComparator), mutableDocumentMap(), documentKeySet());
+      }
+    };
+    TargetChange = class {
+      constructor(resumeToken, current, addedDocuments, modifiedDocuments, removedDocuments) {
+        this.resumeToken = resumeToken;
+        this.current = current;
+        this.addedDocuments = addedDocuments;
+        this.modifiedDocuments = modifiedDocuments;
+        this.removedDocuments = removedDocuments;
+      }
+      /**
+       * This method is used to create a synthesized TargetChanges that can be used to
+       * apply a CURRENT status change to a View (for queries executed in a different
+       * tab) or for new queries (to raise snapshots with correct CURRENT status).
+       */
+      static createSynthesizedTargetChangeForCurrentChange(targetId, current, resumeToken) {
+        return new TargetChange(resumeToken, current, documentKeySet(), documentKeySet(), documentKeySet());
+      }
+    };
+    DocumentWatchChange = class {
+      constructor(updatedTargetIds, removedTargetIds, key2, newDoc) {
+        this.updatedTargetIds = updatedTargetIds;
+        this.removedTargetIds = removedTargetIds;
+        this.key = key2;
+        this.newDoc = newDoc;
+      }
+    };
+    ExistenceFilterChange = class {
+      constructor(targetId, existenceFilter) {
+        this.targetId = targetId;
+        this.existenceFilter = existenceFilter;
+      }
+    };
+    WatchTargetChange = class {
+      constructor(state, targetIds, resumeToken = ByteString.EMPTY_BYTE_STRING, cause = null) {
+        this.state = state;
+        this.targetIds = targetIds;
+        this.resumeToken = resumeToken;
+        this.cause = cause;
+      }
+    };
+    TargetState = class {
+      constructor() {
+        this.pendingResponses = 0;
+        this.documentChanges = snapshotChangesMap();
+        this._resumeToken = ByteString.EMPTY_BYTE_STRING;
+        this._current = false;
+        this._hasPendingChanges = true;
+      }
+      /**
+       * Whether this target has been marked 'current'.
+       *
+       * 'Current' has special meaning in the RPC protocol: It implies that the
+       * Watch backend has sent us all changes up to the point at which the target
+       * was added and that the target is consistent with the rest of the watch
+       * stream.
+       */
+      get current() {
+        return this._current;
+      }
+      /** The last resume token sent to us for this target. */
+      get resumeToken() {
+        return this._resumeToken;
+      }
+      /** Whether this target has pending target adds or target removes. */
+      get isPending() {
+        return this.pendingResponses !== 0;
+      }
+      /** Whether we have modified any state that should trigger a snapshot. */
+      get hasPendingChanges() {
+        return this._hasPendingChanges;
+      }
+      /**
+       * Applies the resume token to the TargetChange, but only when it has a new
+       * value. Empty resumeTokens are discarded.
+       */
+      updateResumeToken(resumeToken) {
+        if (resumeToken.approximateByteSize() > 0) {
+          this._hasPendingChanges = true;
+          this._resumeToken = resumeToken;
+        }
+      }
+      /**
+       * Creates a target change from the current set of changes.
+       *
+       * To reset the document changes after raising this snapshot, call
+       * `clearPendingChanges()`.
+       */
+      toTargetChange() {
+        let addedDocuments = documentKeySet();
+        let modifiedDocuments = documentKeySet();
+        let removedDocuments = documentKeySet();
+        this.documentChanges.forEach((key2, changeType) => {
+          switch (changeType) {
+            case 0:
+              addedDocuments = addedDocuments.add(key2);
+              break;
+            case 2:
+              modifiedDocuments = modifiedDocuments.add(key2);
+              break;
+            case 1:
+              removedDocuments = removedDocuments.add(key2);
+              break;
+            default:
+              fail();
+          }
+        });
+        return new TargetChange(this._resumeToken, this._current, addedDocuments, modifiedDocuments, removedDocuments);
+      }
+      /**
+       * Resets the document changes and sets `hasPendingChanges` to false.
+       */
+      clearPendingChanges() {
+        this._hasPendingChanges = false;
+        this.documentChanges = snapshotChangesMap();
+      }
+      addDocumentChange(key2, changeType) {
+        this._hasPendingChanges = true;
+        this.documentChanges = this.documentChanges.insert(key2, changeType);
+      }
+      removeDocumentChange(key2) {
+        this._hasPendingChanges = true;
+        this.documentChanges = this.documentChanges.remove(key2);
+      }
+      recordPendingTargetRequest() {
+        this.pendingResponses += 1;
+      }
+      recordTargetResponse() {
+        this.pendingResponses -= 1;
+      }
+      markCurrent() {
+        this._hasPendingChanges = true;
+        this._current = true;
+      }
+    };
+    LOG_TAG$g = "WatchChangeAggregator";
+    WatchChangeAggregator = class {
+      constructor(metadataProvider) {
+        this.metadataProvider = metadataProvider;
+        this.targetStates = /* @__PURE__ */ new Map();
+        this.pendingDocumentUpdates = mutableDocumentMap();
+        this.pendingDocumentTargetMapping = documentTargetMap();
+        this.pendingTargetResets = new SortedMap(primitiveComparator);
+      }
+      /**
+       * Processes and adds the DocumentWatchChange to the current set of changes.
+       */
+      handleDocumentChange(docChange) {
+        for (const targetId of docChange.updatedTargetIds) {
+          if (docChange.newDoc && docChange.newDoc.isFoundDocument()) {
+            this.addDocumentToTarget(targetId, docChange.newDoc);
+          } else {
+            this.removeDocumentFromTarget(targetId, docChange.key, docChange.newDoc);
+          }
+        }
+        for (const targetId of docChange.removedTargetIds) {
+          this.removeDocumentFromTarget(targetId, docChange.key, docChange.newDoc);
+        }
+      }
+      /** Processes and adds the WatchTargetChange to the current set of changes. */
+      handleTargetChange(targetChange) {
+        this.forEachTarget(targetChange, (targetId) => {
+          const targetState = this.ensureTargetState(targetId);
+          switch (targetChange.state) {
+            case 0:
+              if (this.isActiveTarget(targetId)) {
+                targetState.updateResumeToken(targetChange.resumeToken);
+              }
+              break;
+            case 1:
+              targetState.recordTargetResponse();
+              if (!targetState.isPending) {
+                targetState.clearPendingChanges();
+              }
+              targetState.updateResumeToken(targetChange.resumeToken);
+              break;
+            case 2:
+              targetState.recordTargetResponse();
+              if (!targetState.isPending) {
+                this.removeTarget(targetId);
+              }
+              break;
+            case 3:
+              if (this.isActiveTarget(targetId)) {
+                targetState.markCurrent();
+                targetState.updateResumeToken(targetChange.resumeToken);
+              }
+              break;
+            case 4:
+              if (this.isActiveTarget(targetId)) {
+                this.resetTarget(targetId);
+                targetState.updateResumeToken(targetChange.resumeToken);
+              }
+              break;
+            default:
+              fail();
+          }
+        });
+      }
+      /**
+       * Iterates over all targetIds that the watch change applies to: either the
+       * targetIds explicitly listed in the change or the targetIds of all currently
+       * active targets.
+       */
+      forEachTarget(targetChange, fn) {
+        if (targetChange.targetIds.length > 0) {
+          targetChange.targetIds.forEach(fn);
+        } else {
+          this.targetStates.forEach((_, targetId) => {
+            if (this.isActiveTarget(targetId)) {
+              fn(targetId);
+            }
+          });
+        }
+      }
+      /**
+       * Handles existence filters and synthesizes deletes for filter mismatches.
+       * Targets that are invalidated by filter mismatches are added to
+       * `pendingTargetResets`.
+       */
+      handleExistenceFilter(watchChange) {
+        const targetId = watchChange.targetId;
+        const expectedCount = watchChange.existenceFilter.count;
+        const targetData = this.targetDataForActiveTarget(targetId);
+        if (targetData) {
+          const target = targetData.target;
+          if (targetIsDocumentTarget(target)) {
+            if (expectedCount === 0) {
+              const key2 = new DocumentKey(target.path);
+              this.removeDocumentFromTarget(targetId, key2, MutableDocument.newNoDocument(key2, SnapshotVersion.min()));
+            } else {
+              hardAssert(expectedCount === 1);
+            }
+          } else {
+            const currentSize = this.getCurrentDocumentCountForTarget(targetId);
+            if (currentSize !== expectedCount) {
+              const bloomFilter = this.parseBloomFilter(watchChange);
+              const status = bloomFilter ? this.applyBloomFilter(bloomFilter, watchChange, currentSize) : 1;
+              if (status !== 0) {
+                this.resetTarget(targetId);
+                const purpose = status === 2 ? "TargetPurposeExistenceFilterMismatchBloom" : "TargetPurposeExistenceFilterMismatch";
+                this.pendingTargetResets = this.pendingTargetResets.insert(targetId, purpose);
+              }
+              testingHooksSpi === null || testingHooksSpi === void 0 ? void 0 : testingHooksSpi.notifyOnExistenceFilterMismatch(createExistenceFilterMismatchInfoForTestingHooks(currentSize, watchChange.existenceFilter, this.metadataProvider.getDatabaseId(), bloomFilter, status));
+            }
+          }
+        }
+      }
+      /**
+       * Parse the bloom filter from the "unchanged_names" field of an existence
+       * filter.
+       */
+      parseBloomFilter(watchChange) {
+        const unchangedNames = watchChange.existenceFilter.unchangedNames;
+        if (!unchangedNames || !unchangedNames.bits) {
+          return null;
+        }
+        const { bits: { bitmap = "", padding = 0 }, hashCount = 0 } = unchangedNames;
+        let normalizedBitmap;
+        try {
+          normalizedBitmap = normalizeByteString(bitmap).toUint8Array();
+        } catch (err) {
+          if (err instanceof Base64DecodeError) {
+            logWarn("Decoding the base64 bloom filter in existence filter failed (" + err.message + "); ignoring the bloom filter and falling back to full re-query.");
+            return null;
+          } else {
+            throw err;
+          }
+        }
+        let bloomFilter;
+        try {
+          bloomFilter = new BloomFilter(normalizedBitmap, padding, hashCount);
+        } catch (err) {
+          if (err instanceof BloomFilterError) {
+            logWarn("BloomFilter error: ", err);
+          } else {
+            logWarn("Applying bloom filter failed: ", err);
+          }
+          return null;
+        }
+        if (bloomFilter.bitCount === 0) {
+          return null;
+        }
+        return bloomFilter;
+      }
+      /**
+       * Apply bloom filter to remove the deleted documents, and return the
+       * application status.
+       */
+      applyBloomFilter(bloomFilter, watchChange, currentCount) {
+        const expectedCount = watchChange.existenceFilter.count;
+        const removedDocumentCount = this.filterRemovedDocuments(bloomFilter, watchChange.targetId);
+        return expectedCount === currentCount - removedDocumentCount ? 0 : 2;
+      }
+      /**
+       * Filter out removed documents based on bloom filter membership result and
+       * return number of documents removed.
+       */
+      filterRemovedDocuments(bloomFilter, targetId) {
+        const existingKeys = this.metadataProvider.getRemoteKeysForTarget(targetId);
+        let removalCount = 0;
+        existingKeys.forEach((key2) => {
+          const databaseId = this.metadataProvider.getDatabaseId();
+          const documentPath = `projects/${databaseId.projectId}/databases/${databaseId.database}/documents/${key2.path.canonicalString()}`;
+          if (!bloomFilter.mightContain(documentPath)) {
+            this.removeDocumentFromTarget(
+              targetId,
+              key2,
+              /*updatedDocument=*/
+              null
+            );
+            removalCount++;
+          }
+        });
+        return removalCount;
+      }
+      /**
+       * Converts the currently accumulated state into a remote event at the
+       * provided snapshot version. Resets the accumulated changes before returning.
+       */
+      createRemoteEvent(snapshotVersion) {
+        const targetChanges = /* @__PURE__ */ new Map();
+        this.targetStates.forEach((targetState, targetId) => {
+          const targetData = this.targetDataForActiveTarget(targetId);
+          if (targetData) {
+            if (targetState.current && targetIsDocumentTarget(targetData.target)) {
+              const key2 = new DocumentKey(targetData.target.path);
+              if (this.pendingDocumentUpdates.get(key2) === null && !this.targetContainsDocument(targetId, key2)) {
+                this.removeDocumentFromTarget(targetId, key2, MutableDocument.newNoDocument(key2, snapshotVersion));
+              }
+            }
+            if (targetState.hasPendingChanges) {
+              targetChanges.set(targetId, targetState.toTargetChange());
+              targetState.clearPendingChanges();
+            }
+          }
+        });
+        let resolvedLimboDocuments = documentKeySet();
+        this.pendingDocumentTargetMapping.forEach((key2, targets) => {
+          let isOnlyLimboTarget = true;
+          targets.forEachWhile((targetId) => {
+            const targetData = this.targetDataForActiveTarget(targetId);
+            if (targetData && targetData.purpose !== "TargetPurposeLimboResolution") {
+              isOnlyLimboTarget = false;
+              return false;
+            }
+            return true;
+          });
+          if (isOnlyLimboTarget) {
+            resolvedLimboDocuments = resolvedLimboDocuments.add(key2);
+          }
+        });
+        this.pendingDocumentUpdates.forEach((_, doc2) => doc2.setReadTime(snapshotVersion));
+        const remoteEvent = new RemoteEvent(snapshotVersion, targetChanges, this.pendingTargetResets, this.pendingDocumentUpdates, resolvedLimboDocuments);
+        this.pendingDocumentUpdates = mutableDocumentMap();
+        this.pendingDocumentTargetMapping = documentTargetMap();
+        this.pendingTargetResets = new SortedMap(primitiveComparator);
+        return remoteEvent;
+      }
+      /**
+       * Adds the provided document to the internal list of document updates and
+       * its document key to the given target's mapping.
+       */
+      // Visible for testing.
+      addDocumentToTarget(targetId, document2) {
+        if (!this.isActiveTarget(targetId)) {
+          return;
+        }
+        const changeType = this.targetContainsDocument(targetId, document2.key) ? 2 : 0;
+        const targetState = this.ensureTargetState(targetId);
+        targetState.addDocumentChange(document2.key, changeType);
+        this.pendingDocumentUpdates = this.pendingDocumentUpdates.insert(document2.key, document2);
+        this.pendingDocumentTargetMapping = this.pendingDocumentTargetMapping.insert(document2.key, this.ensureDocumentTargetMapping(document2.key).add(targetId));
+      }
+      /**
+       * Removes the provided document from the target mapping. If the
+       * document no longer matches the target, but the document's state is still
+       * known (e.g. we know that the document was deleted or we received the change
+       * that caused the filter mismatch), the new document can be provided
+       * to update the remote document cache.
+       */
+      // Visible for testing.
+      removeDocumentFromTarget(targetId, key2, updatedDocument) {
+        if (!this.isActiveTarget(targetId)) {
+          return;
+        }
+        const targetState = this.ensureTargetState(targetId);
+        if (this.targetContainsDocument(targetId, key2)) {
+          targetState.addDocumentChange(
+            key2,
+            1
+            /* ChangeType.Removed */
+          );
+        } else {
+          targetState.removeDocumentChange(key2);
+        }
+        this.pendingDocumentTargetMapping = this.pendingDocumentTargetMapping.insert(key2, this.ensureDocumentTargetMapping(key2).delete(targetId));
+        if (updatedDocument) {
+          this.pendingDocumentUpdates = this.pendingDocumentUpdates.insert(key2, updatedDocument);
+        }
+      }
+      removeTarget(targetId) {
+        this.targetStates.delete(targetId);
+      }
+      /**
+       * Returns the current count of documents in the target. This includes both
+       * the number of documents that the LocalStore considers to be part of the
+       * target as well as any accumulated changes.
+       */
+      getCurrentDocumentCountForTarget(targetId) {
+        const targetState = this.ensureTargetState(targetId);
+        const targetChange = targetState.toTargetChange();
+        return this.metadataProvider.getRemoteKeysForTarget(targetId).size + targetChange.addedDocuments.size - targetChange.removedDocuments.size;
+      }
+      /**
+       * Increment the number of acks needed from watch before we can consider the
+       * server to be 'in-sync' with the client's active targets.
+       */
+      recordPendingTargetRequest(targetId) {
+        const targetState = this.ensureTargetState(targetId);
+        targetState.recordPendingTargetRequest();
+      }
+      ensureTargetState(targetId) {
+        let result = this.targetStates.get(targetId);
+        if (!result) {
+          result = new TargetState();
+          this.targetStates.set(targetId, result);
+        }
+        return result;
+      }
+      ensureDocumentTargetMapping(key2) {
+        let targetMapping = this.pendingDocumentTargetMapping.get(key2);
+        if (!targetMapping) {
+          targetMapping = new SortedSet(primitiveComparator);
+          this.pendingDocumentTargetMapping = this.pendingDocumentTargetMapping.insert(key2, targetMapping);
+        }
+        return targetMapping;
+      }
+      /**
+       * Verifies that the user is still interested in this target (by calling
+       * `getTargetDataForTarget()`) and that we are not waiting for pending ADDs
+       * from watch.
+       */
+      isActiveTarget(targetId) {
+        const targetActive = this.targetDataForActiveTarget(targetId) !== null;
+        if (!targetActive) {
+          logDebug(LOG_TAG$g, "Detected inactive target", targetId);
+        }
+        return targetActive;
+      }
+      /**
+       * Returns the TargetData for an active target (i.e. a target that the user
+       * is still interested in that has no outstanding target change requests).
+       */
+      targetDataForActiveTarget(targetId) {
+        const targetState = this.targetStates.get(targetId);
+        return targetState && targetState.isPending ? null : this.metadataProvider.getTargetDataForTarget(targetId);
+      }
+      /**
+       * Resets the state of a Watch target to its initial state (e.g. sets
+       * 'current' to false, clears the resume token and removes its target mapping
+       * from all documents).
+       */
+      resetTarget(targetId) {
+        this.targetStates.set(targetId, new TargetState());
+        const existingKeys = this.metadataProvider.getRemoteKeysForTarget(targetId);
+        existingKeys.forEach((key2) => {
+          this.removeDocumentFromTarget(
+            targetId,
+            key2,
+            /*updatedDocument=*/
+            null
+          );
+        });
+      }
+      /**
+       * Returns whether the LocalStore considers the document to be part of the
+       * specified target.
+       */
+      targetContainsDocument(targetId, key2) {
+        const existingKeys = this.metadataProvider.getRemoteKeysForTarget(targetId);
+        return existingKeys.has(key2);
+      }
+    };
     DIRECTIONS = (() => {
       const dirs = {};
       dirs[
@@ -47369,6 +52517,63 @@ var init_index_node = __esm({
       ] = "OR";
       return ops;
     })();
+    JsonProtoSerializer = class {
+      constructor(databaseId, useProto3Json) {
+        this.databaseId = databaseId;
+        this.useProto3Json = useProto3Json;
+      }
+    };
+    TargetData = class {
+      constructor(target, targetId, purpose, sequenceNumber, snapshotVersion = SnapshotVersion.min(), lastLimboFreeSnapshotVersion = SnapshotVersion.min(), resumeToken = ByteString.EMPTY_BYTE_STRING, expectedCount = null) {
+        this.target = target;
+        this.targetId = targetId;
+        this.purpose = purpose;
+        this.sequenceNumber = sequenceNumber;
+        this.snapshotVersion = snapshotVersion;
+        this.lastLimboFreeSnapshotVersion = lastLimboFreeSnapshotVersion;
+        this.resumeToken = resumeToken;
+        this.expectedCount = expectedCount;
+      }
+      /** Creates a new target data instance with an updated sequence number. */
+      withSequenceNumber(sequenceNumber) {
+        return new TargetData(this.target, this.targetId, this.purpose, sequenceNumber, this.snapshotVersion, this.lastLimboFreeSnapshotVersion, this.resumeToken, this.expectedCount);
+      }
+      /**
+       * Creates a new target data instance with an updated resume token and
+       * snapshot version.
+       */
+      withResumeToken(resumeToken, snapshotVersion) {
+        return new TargetData(
+          this.target,
+          this.targetId,
+          this.purpose,
+          this.sequenceNumber,
+          snapshotVersion,
+          this.lastLimboFreeSnapshotVersion,
+          resumeToken,
+          /* expectedCount= */
+          null
+        );
+      }
+      /**
+       * Creates a new target data instance with an updated expected count.
+       */
+      withExpectedCount(expectedCount) {
+        return new TargetData(this.target, this.targetId, this.purpose, this.sequenceNumber, this.snapshotVersion, this.lastLimboFreeSnapshotVersion, this.resumeToken, expectedCount);
+      }
+      /**
+       * Creates a new target data instance with an updated last limbo free
+       * snapshot version number.
+       */
+      withLastLimboFreeSnapshotVersion(lastLimboFreeSnapshotVersion) {
+        return new TargetData(this.target, this.targetId, this.purpose, this.sequenceNumber, this.snapshotVersion, lastLimboFreeSnapshotVersion, this.resumeToken, this.expectedCount);
+      }
+    };
+    LocalSerializer = class {
+      constructor(remoteSerializer) {
+        this.remoteSerializer = remoteSerializer;
+      }
+    };
     INDEX_TYPE_NULL = 5;
     INDEX_TYPE_BOOLEAN = 10;
     INDEX_TYPE_NAN = 13;
@@ -47486,15 +52691,106 @@ var init_index_node = __esm({
           this.writeUnlabeledIndexString(segment, encoder3);
         });
       }
-      writeValueTypeLabel(encoder3, typeOrder) {
-        encoder3.writeNumber(typeOrder);
+      writeValueTypeLabel(encoder3, typeOrder2) {
+        encoder3.writeNumber(typeOrder2);
       }
       writeTruncationMarker(encoder3) {
         encoder3.writeNumber(NOT_TRUNCATED);
       }
     };
     FirestoreIndexValueWriter.INSTANCE = new FirestoreIndexValueWriter();
+    MemoryIndexManager = class {
+      constructor() {
+        this.collectionParentIndex = new MemoryCollectionParentIndex();
+      }
+      addToCollectionParentIndex(transaction, collectionPath) {
+        this.collectionParentIndex.add(collectionPath);
+        return PersistencePromise.resolve();
+      }
+      getCollectionParents(transaction, collectionId) {
+        return PersistencePromise.resolve(this.collectionParentIndex.getEntries(collectionId));
+      }
+      addFieldIndex(transaction, index16) {
+        return PersistencePromise.resolve();
+      }
+      deleteFieldIndex(transaction, index16) {
+        return PersistencePromise.resolve();
+      }
+      deleteAllFieldIndexes(transaction) {
+        return PersistencePromise.resolve();
+      }
+      createTargetIndexes(transaction, target) {
+        return PersistencePromise.resolve();
+      }
+      getDocumentsMatchingTarget(transaction, target) {
+        return PersistencePromise.resolve(null);
+      }
+      getIndexType(transaction, target) {
+        return PersistencePromise.resolve(
+          0
+          /* IndexType.NONE */
+        );
+      }
+      getFieldIndexes(transaction, collectionGroup) {
+        return PersistencePromise.resolve([]);
+      }
+      getNextCollectionGroupToUpdate(transaction) {
+        return PersistencePromise.resolve(null);
+      }
+      getMinOffset(transaction, target) {
+        return PersistencePromise.resolve(IndexOffset.min());
+      }
+      getMinOffsetFromCollectionGroup(transaction, collectionGroup) {
+        return PersistencePromise.resolve(IndexOffset.min());
+      }
+      updateCollectionGroup(transaction, collectionGroup, offset) {
+        return PersistencePromise.resolve();
+      }
+      updateIndexEntries(transaction, documents) {
+        return PersistencePromise.resolve();
+      }
+    };
+    MemoryCollectionParentIndex = class {
+      constructor() {
+        this.index = {};
+      }
+      // Returns false if the entry already existed.
+      add(collectionPath) {
+        const collectionId = collectionPath.lastSegment();
+        const parentPath = collectionPath.popLast();
+        const existingParents = this.index[collectionId] || new SortedSet(ResourcePath.comparator);
+        const added = !existingParents.has(parentPath);
+        this.index[collectionId] = existingParents.add(parentPath);
+        return added;
+      }
+      has(collectionPath) {
+        const collectionId = collectionPath.lastSegment();
+        const parentPath = collectionPath.popLast();
+        const existingParents = this.index[collectionId];
+        return existingParents && existingParents.has(parentPath);
+      }
+      getEntries(collectionId) {
+        const parentPaths = this.index[collectionId] || new SortedSet(ResourcePath.comparator);
+        return parentPaths.toArray();
+      }
+    };
     EMPTY_VALUE = new Uint8Array(0);
+    OFFSET = 2;
+    TargetIdGenerator = class {
+      constructor(lastId) {
+        this.lastId = lastId;
+      }
+      next() {
+        this.lastId += OFFSET;
+        return this.lastId;
+      }
+      static forTargetCache() {
+        return new TargetIdGenerator(2 - OFFSET);
+      }
+      static forSyncEngine() {
+        return new TargetIdGenerator(1 - OFFSET);
+      }
+    };
     LRU_COLLECTION_DISABLED = -1;
     LRU_DEFAULT_CACHE_SIZE_BYTES = 40 * 1024 * 1024;
     LruParams = class {
@@ -47514,10 +52810,4442 @@ var init_index_node = __esm({
     LRU_MINIMUM_CACHE_SIZE_BYTES = 1 * 1024 * 1024;
     INITIAL_GC_DELAY_MS = 1 * 60 * 1e3;
     REGULAR_GC_DELAY_MS = 5 * 60 * 1e3;
+    RemoteDocumentChangeBuffer = class {
+      constructor() {
+        this.changes = new ObjectMap((key2) => key2.toString(), (l2, r2) => l2.isEqual(r2));
+        this.changesApplied = false;
+      }
+      /**
+       * Buffers a `RemoteDocumentCache.addEntry()` call.
+       *
+       * You can only modify documents that have already been retrieved via
+       * `getEntry()/getEntries()` (enforced via IndexedDbs `apply()`).
+       */
+      addEntry(document2) {
+        this.assertNotApplied();
+        this.changes.set(document2.key, document2);
+      }
+      /**
+       * Buffers a `RemoteDocumentCache.removeEntry()` call.
+       *
+       * You can only remove documents that have already been retrieved via
+       * `getEntry()/getEntries()` (enforced via IndexedDbs `apply()`).
+       */
+      removeEntry(key2, readTime) {
+        this.assertNotApplied();
+        this.changes.set(key2, MutableDocument.newInvalidDocument(key2).setReadTime(readTime));
+      }
+      /**
+       * Looks up an entry in the cache. The buffered changes will first be checked,
+       * and if no buffered change applies, this will forward to
+       * `RemoteDocumentCache.getEntry()`.
+       *
+       * @param transaction - The transaction in which to perform any persistence
+       *     operations.
+       * @param documentKey - The key of the entry to look up.
+       * @returns The cached document or an invalid document if we have nothing
+       * cached.
+       */
+      getEntry(transaction, documentKey) {
+        this.assertNotApplied();
+        const bufferedEntry = this.changes.get(documentKey);
+        if (bufferedEntry !== void 0) {
+          return PersistencePromise.resolve(bufferedEntry);
+        } else {
+          return this.getFromCache(transaction, documentKey);
+        }
+      }
+      /**
+       * Looks up several entries in the cache, forwarding to
+       * `RemoteDocumentCache.getEntry()`.
+       *
+       * @param transaction - The transaction in which to perform any persistence
+       *     operations.
+       * @param documentKeys - The keys of the entries to look up.
+       * @returns A map of cached documents, indexed by key. If an entry cannot be
+       *     found, the corresponding key will be mapped to an invalid document.
+       */
+      getEntries(transaction, documentKeys) {
+        return this.getAllFromCache(transaction, documentKeys);
+      }
+      /**
+       * Applies buffered changes to the underlying RemoteDocumentCache, using
+       * the provided transaction.
+       */
+      apply(transaction) {
+        this.assertNotApplied();
+        this.changesApplied = true;
+        return this.applyChanges(transaction);
+      }
+      /** Helper to assert this.changes is not null  */
+      assertNotApplied() {
+      }
+    };
+    OverlayedDocument = class {
+      constructor(overlayedDocument, mutatedFields) {
+        this.overlayedDocument = overlayedDocument;
+        this.mutatedFields = mutatedFields;
+      }
+    };
+    LocalDocumentsView = class {
+      constructor(remoteDocumentCache, mutationQueue, documentOverlayCache, indexManager) {
+        this.remoteDocumentCache = remoteDocumentCache;
+        this.mutationQueue = mutationQueue;
+        this.documentOverlayCache = documentOverlayCache;
+        this.indexManager = indexManager;
+      }
+      /**
+       * Get the local view of the document identified by `key`.
+       *
+       * @returns Local view of the document or null if we don't have any cached
+       * state for it.
+       */
+      getDocument(transaction, key2) {
+        let overlay = null;
+        return this.documentOverlayCache.getOverlay(transaction, key2).next((value) => {
+          overlay = value;
+          return this.remoteDocumentCache.getEntry(transaction, key2);
+        }).next((document2) => {
+          if (overlay !== null) {
+            mutationApplyToLocalView(overlay.mutation, document2, FieldMask.empty(), Timestamp.now());
+          }
+          return document2;
+        });
+      }
+      /**
+       * Gets the local view of the documents identified by `keys`.
+       *
+       * If we don't have cached state for a document in `keys`, a NoDocument will
+       * be stored for that key in the resulting set.
+       */
+      getDocuments(transaction, keys) {
+        return this.remoteDocumentCache.getEntries(transaction, keys).next((docs) => this.getLocalViewOfDocuments(transaction, docs, documentKeySet()).next(() => docs));
+      }
+      /**
+       * Similar to `getDocuments`, but creates the local view from the given
+       * `baseDocs` without retrieving documents from the local store.
+       *
+       * @param transaction - The transaction this operation is scoped to.
+       * @param docs - The documents to apply local mutations to get the local views.
+       * @param existenceStateChanged - The set of document keys whose existence state
+       *   is changed. This is useful to determine if some documents overlay needs
+       *   to be recalculated.
+       */
+      getLocalViewOfDocuments(transaction, docs, existenceStateChanged = documentKeySet()) {
+        const overlays = newOverlayMap();
+        return this.populateOverlays(transaction, overlays, docs).next(() => {
+          return this.computeViews(transaction, docs, overlays, existenceStateChanged).next((computeViewsResult) => {
+            let result = documentMap();
+            computeViewsResult.forEach((documentKey, overlayedDocument) => {
+              result = result.insert(documentKey, overlayedDocument.overlayedDocument);
+            });
+            return result;
+          });
+        });
+      }
+      /**
+       * Gets the overlayed documents for the given document map, which will include
+       * the local view of those documents and a `FieldMask` indicating which fields
+       * are mutated locally, `null` if overlay is a Set or Delete mutation.
+       */
+      getOverlayedDocuments(transaction, docs) {
+        const overlays = newOverlayMap();
+        return this.populateOverlays(transaction, overlays, docs).next(() => this.computeViews(transaction, docs, overlays, documentKeySet()));
+      }
+      /**
+       * Fetches the overlays for {@code docs} and adds them to provided overlay map
+       * if the map does not already contain an entry for the given document key.
+       */
+      populateOverlays(transaction, overlays, docs) {
+        const missingOverlays = [];
+        docs.forEach((key2) => {
+          if (!overlays.has(key2)) {
+            missingOverlays.push(key2);
+          }
+        });
+        return this.documentOverlayCache.getOverlays(transaction, missingOverlays).next((result) => {
+          result.forEach((key2, val) => {
+            overlays.set(key2, val);
+          });
+        });
+      }
+      /**
+       * Computes the local view for the given documents.
+       *
+       * @param docs - The documents to compute views for. It also has the base
+       *   version of the documents.
+       * @param overlays - The overlays that need to be applied to the given base
+       *   version of the documents.
+       * @param existenceStateChanged - A set of documents whose existence states
+       *   might have changed. This is used to determine if we need to re-calculate
+       *   overlays from mutation queues.
+       * @return A map represents the local documents view.
+       */
+      computeViews(transaction, docs, overlays, existenceStateChanged) {
+        let recalculateDocuments = mutableDocumentMap();
+        const mutatedFields = newDocumentKeyMap();
+        const results = newOverlayedDocumentMap();
+        docs.forEach((_, doc2) => {
+          const overlay = overlays.get(doc2.key);
+          if (existenceStateChanged.has(doc2.key) && (overlay === void 0 || overlay.mutation instanceof PatchMutation)) {
+            recalculateDocuments = recalculateDocuments.insert(doc2.key, doc2);
+          } else if (overlay !== void 0) {
+            mutatedFields.set(doc2.key, overlay.mutation.getFieldMask());
+            mutationApplyToLocalView(overlay.mutation, doc2, overlay.mutation.getFieldMask(), Timestamp.now());
+          } else {
+            mutatedFields.set(doc2.key, FieldMask.empty());
+          }
+        });
+        return this.recalculateAndSaveOverlays(transaction, recalculateDocuments).next((recalculatedFields) => {
+          recalculatedFields.forEach((documentKey, mask) => mutatedFields.set(documentKey, mask));
+          docs.forEach((documentKey, document2) => {
+            var _a;
+            return results.set(documentKey, new OverlayedDocument(document2, (_a = mutatedFields.get(documentKey)) !== null && _a !== void 0 ? _a : null));
+          });
+          return results;
+        });
+      }
+      recalculateAndSaveOverlays(transaction, docs) {
+        const masks = newDocumentKeyMap();
+        let documentsByBatchId = new SortedMap((key1, key2) => key1 - key2);
+        let processed = documentKeySet();
+        return this.mutationQueue.getAllMutationBatchesAffectingDocumentKeys(transaction, docs).next((batches) => {
+          for (const batch of batches) {
+            batch.keys().forEach((key2) => {
+              const baseDoc = docs.get(key2);
+              if (baseDoc === null) {
+                return;
+              }
+              let mask = masks.get(key2) || FieldMask.empty();
+              mask = batch.applyToLocalView(baseDoc, mask);
+              masks.set(key2, mask);
+              const newSet = (documentsByBatchId.get(batch.batchId) || documentKeySet()).add(key2);
+              documentsByBatchId = documentsByBatchId.insert(batch.batchId, newSet);
+            });
+          }
+        }).next(() => {
+          const promises = [];
+          const iter = documentsByBatchId.getReverseIterator();
+          while (iter.hasNext()) {
+            const entry = iter.getNext();
+            const batchId = entry.key;
+            const keys = entry.value;
+            const overlays = newMutationMap();
+            keys.forEach((key2) => {
+              if (!processed.has(key2)) {
+                const overlayMutation = calculateOverlayMutation(docs.get(key2), masks.get(key2));
+                if (overlayMutation !== null) {
+                  overlays.set(key2, overlayMutation);
+                }
+                processed = processed.add(key2);
+              }
+            });
+            promises.push(this.documentOverlayCache.saveOverlays(transaction, batchId, overlays));
+          }
+          return PersistencePromise.waitFor(promises);
+        }).next(() => masks);
+      }
+      /**
+       * Recalculates overlays by reading the documents from remote document cache
+       * first, and saves them after they are calculated.
+       */
+      recalculateAndSaveOverlaysForDocumentKeys(transaction, documentKeys) {
+        return this.remoteDocumentCache.getEntries(transaction, documentKeys).next((docs) => this.recalculateAndSaveOverlays(transaction, docs));
+      }
+      /**
+       * Performs a query against the local view of all documents.
+       *
+       * @param transaction - The persistence transaction.
+       * @param query - The query to match documents against.
+       * @param offset - Read time and key to start scanning by (exclusive).
+       * @param context - A optional tracker to keep a record of important details
+       *   during database local query execution.
+       */
+      getDocumentsMatchingQuery(transaction, query, offset, context) {
+        if (isDocumentQuery$1(query)) {
+          return this.getDocumentsMatchingDocumentQuery(transaction, query.path);
+        } else if (isCollectionGroupQuery(query)) {
+          return this.getDocumentsMatchingCollectionGroupQuery(transaction, query, offset, context);
+        } else {
+          return this.getDocumentsMatchingCollectionQuery(transaction, query, offset, context);
+        }
+      }
+      /**
+       * Given a collection group, returns the next documents that follow the provided offset, along
+       * with an updated batch ID.
+       *
+       * <p>The documents returned by this method are ordered by remote version from the provided
+       * offset. If there are no more remote documents after the provided offset, documents with
+       * mutations in order of batch id from the offset are returned. Since all documents in a batch are
+       * returned together, the total number of documents returned can exceed {@code count}.
+       *
+       * @param transaction
+       * @param collectionGroup The collection group for the documents.
+       * @param offset The offset to index into.
+       * @param count The number of documents to return
+       * @return A LocalWriteResult with the documents that follow the provided offset and the last processed batch id.
+       */
+      getNextDocuments(transaction, collectionGroup, offset, count) {
+        return this.remoteDocumentCache.getAllFromCollectionGroup(transaction, collectionGroup, offset, count).next((originalDocs) => {
+          const overlaysPromise = count - originalDocs.size > 0 ? this.documentOverlayCache.getOverlaysForCollectionGroup(transaction, collectionGroup, offset.largestBatchId, count - originalDocs.size) : PersistencePromise.resolve(newOverlayMap());
+          let largestBatchId = INITIAL_LARGEST_BATCH_ID;
+          let modifiedDocs = originalDocs;
+          return overlaysPromise.next((overlays) => {
+            return PersistencePromise.forEach(overlays, (key2, overlay) => {
+              if (largestBatchId < overlay.largestBatchId) {
+                largestBatchId = overlay.largestBatchId;
+              }
+              if (originalDocs.get(key2)) {
+                return PersistencePromise.resolve();
+              }
+              return this.remoteDocumentCache.getEntry(transaction, key2).next((doc2) => {
+                modifiedDocs = modifiedDocs.insert(key2, doc2);
+              });
+            }).next(() => this.populateOverlays(transaction, overlays, originalDocs)).next(() => this.computeViews(transaction, modifiedDocs, overlays, documentKeySet())).next((localDocs) => ({
+              batchId: largestBatchId,
+              changes: convertOverlayedDocumentMapToDocumentMap(localDocs)
+            }));
+          });
+        });
+      }
+      getDocumentsMatchingDocumentQuery(transaction, docPath) {
+        return this.getDocument(transaction, new DocumentKey(docPath)).next((document2) => {
+          let result = documentMap();
+          if (document2.isFoundDocument()) {
+            result = result.insert(document2.key, document2);
+          }
+          return result;
+        });
+      }
+      getDocumentsMatchingCollectionGroupQuery(transaction, query, offset, context) {
+        const collectionId = query.collectionGroup;
+        let results = documentMap();
+        return this.indexManager.getCollectionParents(transaction, collectionId).next((parents) => {
+          return PersistencePromise.forEach(parents, (parent) => {
+            const collectionQuery = asCollectionQueryAtPath(query, parent.child(collectionId));
+            return this.getDocumentsMatchingCollectionQuery(transaction, collectionQuery, offset, context).next((r2) => {
+              r2.forEach((key2, doc2) => {
+                results = results.insert(key2, doc2);
+              });
+            });
+          }).next(() => results);
+        });
+      }
+      getDocumentsMatchingCollectionQuery(transaction, query, offset, context) {
+        let overlays;
+        return this.documentOverlayCache.getOverlaysForCollection(transaction, query.path, offset.largestBatchId).next((result) => {
+          overlays = result;
+          return this.remoteDocumentCache.getDocumentsMatchingQuery(transaction, query, offset, overlays, context);
+        }).next((remoteDocuments) => {
+          overlays.forEach((_, overlay) => {
+            const key2 = overlay.getKey();
+            if (remoteDocuments.get(key2) === null) {
+              remoteDocuments = remoteDocuments.insert(key2, MutableDocument.newInvalidDocument(key2));
+            }
+          });
+          let results = documentMap();
+          remoteDocuments.forEach((key2, document2) => {
+            const overlay = overlays.get(key2);
+            if (overlay !== void 0) {
+              mutationApplyToLocalView(overlay.mutation, document2, FieldMask.empty(), Timestamp.now());
+            }
+            if (queryMatches(query, document2)) {
+              results = results.insert(key2, document2);
+            }
+          });
+          return results;
+        });
+      }
+    };
+    MemoryBundleCache = class {
+      constructor(serializer) {
+        this.serializer = serializer;
+        this.bundles = /* @__PURE__ */ new Map();
+        this.namedQueries = /* @__PURE__ */ new Map();
+      }
+      getBundleMetadata(transaction, bundleId) {
+        return PersistencePromise.resolve(this.bundles.get(bundleId));
+      }
+      saveBundleMetadata(transaction, bundleMetadata) {
+        this.bundles.set(bundleMetadata.id, fromBundleMetadata(bundleMetadata));
+        return PersistencePromise.resolve();
+      }
+      getNamedQuery(transaction, queryName) {
+        return PersistencePromise.resolve(this.namedQueries.get(queryName));
+      }
+      saveNamedQuery(transaction, query) {
+        this.namedQueries.set(query.name, fromProtoNamedQuery(query));
+        return PersistencePromise.resolve();
+      }
+    };
+    MemoryDocumentOverlayCache = class {
+      constructor() {
+        this.overlays = new SortedMap(DocumentKey.comparator);
+        this.overlayByBatchId = /* @__PURE__ */ new Map();
+      }
+      getOverlay(transaction, key2) {
+        return PersistencePromise.resolve(this.overlays.get(key2));
+      }
+      getOverlays(transaction, keys) {
+        const result = newOverlayMap();
+        return PersistencePromise.forEach(keys, (key2) => {
+          return this.getOverlay(transaction, key2).next((overlay) => {
+            if (overlay !== null) {
+              result.set(key2, overlay);
+            }
+          });
+        }).next(() => result);
+      }
+      saveOverlays(transaction, largestBatchId, overlays) {
+        overlays.forEach((_, mutation) => {
+          this.saveOverlay(transaction, largestBatchId, mutation);
+        });
+        return PersistencePromise.resolve();
+      }
+      removeOverlaysForBatchId(transaction, documentKeys, batchId) {
+        const keys = this.overlayByBatchId.get(batchId);
+        if (keys !== void 0) {
+          keys.forEach((key2) => this.overlays = this.overlays.remove(key2));
+          this.overlayByBatchId.delete(batchId);
+        }
+        return PersistencePromise.resolve();
+      }
+      getOverlaysForCollection(transaction, collection, sinceBatchId) {
+        const result = newOverlayMap();
+        const immediateChildrenPathLength = collection.length + 1;
+        const prefix = new DocumentKey(collection.child(""));
+        const iter = this.overlays.getIteratorFrom(prefix);
+        while (iter.hasNext()) {
+          const entry = iter.getNext();
+          const overlay = entry.value;
+          const key2 = overlay.getKey();
+          if (!collection.isPrefixOf(key2.path)) {
+            break;
+          }
+          if (key2.path.length !== immediateChildrenPathLength) {
+            continue;
+          }
+          if (overlay.largestBatchId > sinceBatchId) {
+            result.set(overlay.getKey(), overlay);
+          }
+        }
+        return PersistencePromise.resolve(result);
+      }
+      getOverlaysForCollectionGroup(transaction, collectionGroup, sinceBatchId, count) {
+        let batchIdToOverlays = new SortedMap((key1, key2) => key1 - key2);
+        const iter = this.overlays.getIterator();
+        while (iter.hasNext()) {
+          const entry = iter.getNext();
+          const overlay = entry.value;
+          const key2 = overlay.getKey();
+          if (key2.getCollectionGroup() !== collectionGroup) {
+            continue;
+          }
+          if (overlay.largestBatchId > sinceBatchId) {
+            let overlaysForBatchId = batchIdToOverlays.get(overlay.largestBatchId);
+            if (overlaysForBatchId === null) {
+              overlaysForBatchId = newOverlayMap();
+              batchIdToOverlays = batchIdToOverlays.insert(overlay.largestBatchId, overlaysForBatchId);
+            }
+            overlaysForBatchId.set(overlay.getKey(), overlay);
+          }
+        }
+        const result = newOverlayMap();
+        const batchIter = batchIdToOverlays.getIterator();
+        while (batchIter.hasNext()) {
+          const entry = batchIter.getNext();
+          const overlays = entry.value;
+          overlays.forEach((key2, overlay) => result.set(key2, overlay));
+          if (result.size() >= count) {
+            break;
+          }
+        }
+        return PersistencePromise.resolve(result);
+      }
+      saveOverlay(transaction, largestBatchId, mutation) {
+        const existing = this.overlays.get(mutation.key);
+        if (existing !== null) {
+          const newSet = this.overlayByBatchId.get(existing.largestBatchId).delete(mutation.key);
+          this.overlayByBatchId.set(existing.largestBatchId, newSet);
+        }
+        this.overlays = this.overlays.insert(mutation.key, new Overlay(largestBatchId, mutation));
+        let batch = this.overlayByBatchId.get(largestBatchId);
+        if (batch === void 0) {
+          batch = documentKeySet();
+          this.overlayByBatchId.set(largestBatchId, batch);
+        }
+        this.overlayByBatchId.set(largestBatchId, batch.add(mutation.key));
+      }
+    };
+    ReferenceSet = class {
+      constructor() {
+        this.refsByKey = new SortedSet(DocReference.compareByKey);
+        this.refsByTarget = new SortedSet(DocReference.compareByTargetId);
+      }
+      /** Returns true if the reference set contains no references. */
+      isEmpty() {
+        return this.refsByKey.isEmpty();
+      }
+      /** Adds a reference to the given document key for the given ID. */
+      addReference(key2, id2) {
+        const ref = new DocReference(key2, id2);
+        this.refsByKey = this.refsByKey.add(ref);
+        this.refsByTarget = this.refsByTarget.add(ref);
+      }
+      /** Add references to the given document keys for the given ID. */
+      addReferences(keys, id2) {
+        keys.forEach((key2) => this.addReference(key2, id2));
+      }
+      /**
+       * Removes a reference to the given document key for the given
+       * ID.
+       */
+      removeReference(key2, id2) {
+        this.removeRef(new DocReference(key2, id2));
+      }
+      removeReferences(keys, id2) {
+        keys.forEach((key2) => this.removeReference(key2, id2));
+      }
+      /**
+       * Clears all references with a given ID. Calls removeRef() for each key
+       * removed.
+       */
+      removeReferencesForId(id2) {
+        const emptyKey = new DocumentKey(new ResourcePath([]));
+        const startRef = new DocReference(emptyKey, id2);
+        const endRef = new DocReference(emptyKey, id2 + 1);
+        const keys = [];
+        this.refsByTarget.forEachInRange([startRef, endRef], (ref) => {
+          this.removeRef(ref);
+          keys.push(ref.key);
+        });
+        return keys;
+      }
+      removeAllReferences() {
+        this.refsByKey.forEach((ref) => this.removeRef(ref));
+      }
+      removeRef(ref) {
+        this.refsByKey = this.refsByKey.delete(ref);
+        this.refsByTarget = this.refsByTarget.delete(ref);
+      }
+      referencesForId(id2) {
+        const emptyKey = new DocumentKey(new ResourcePath([]));
+        const startRef = new DocReference(emptyKey, id2);
+        const endRef = new DocReference(emptyKey, id2 + 1);
+        let keys = documentKeySet();
+        this.refsByTarget.forEachInRange([startRef, endRef], (ref) => {
+          keys = keys.add(ref.key);
+        });
+        return keys;
+      }
+      containsKey(key2) {
+        const ref = new DocReference(key2, 0);
+        const firstRef = this.refsByKey.firstAfterOrEqual(ref);
+        return firstRef !== null && key2.isEqual(firstRef.key);
+      }
+    };
+    DocReference = class {
+      constructor(key2, targetOrBatchId) {
+        this.key = key2;
+        this.targetOrBatchId = targetOrBatchId;
+      }
+      /** Compare by key then by ID */
+      static compareByKey(left, right) {
+        return DocumentKey.comparator(left.key, right.key) || primitiveComparator(left.targetOrBatchId, right.targetOrBatchId);
+      }
+      /** Compare by ID then by key */
+      static compareByTargetId(left, right) {
+        return primitiveComparator(left.targetOrBatchId, right.targetOrBatchId) || DocumentKey.comparator(left.key, right.key);
+      }
+    };
+    MemoryMutationQueue = class {
+      constructor(indexManager, referenceDelegate) {
+        this.indexManager = indexManager;
+        this.referenceDelegate = referenceDelegate;
+        this.mutationQueue = [];
+        this.nextBatchId = 1;
+        this.batchesByDocumentKey = new SortedSet(DocReference.compareByKey);
+      }
+      checkEmpty(transaction) {
+        return PersistencePromise.resolve(this.mutationQueue.length === 0);
+      }
+      addMutationBatch(transaction, localWriteTime, baseMutations, mutations) {
+        const batchId = this.nextBatchId;
+        this.nextBatchId++;
+        if (this.mutationQueue.length > 0) {
+          this.mutationQueue[this.mutationQueue.length - 1];
+        }
+        const batch = new MutationBatch(batchId, localWriteTime, baseMutations, mutations);
+        this.mutationQueue.push(batch);
+        for (const mutation of mutations) {
+          this.batchesByDocumentKey = this.batchesByDocumentKey.add(new DocReference(mutation.key, batchId));
+          this.indexManager.addToCollectionParentIndex(transaction, mutation.key.path.popLast());
+        }
+        return PersistencePromise.resolve(batch);
+      }
+      lookupMutationBatch(transaction, batchId) {
+        return PersistencePromise.resolve(this.findMutationBatch(batchId));
+      }
+      getNextMutationBatchAfterBatchId(transaction, batchId) {
+        const nextBatchId = batchId + 1;
+        const rawIndex = this.indexOfBatchId(nextBatchId);
+        const index16 = rawIndex < 0 ? 0 : rawIndex;
+        return PersistencePromise.resolve(this.mutationQueue.length > index16 ? this.mutationQueue[index16] : null);
+      }
+      getHighestUnacknowledgedBatchId() {
+        return PersistencePromise.resolve(this.mutationQueue.length === 0 ? BATCHID_UNKNOWN : this.nextBatchId - 1);
+      }
+      getAllMutationBatches(transaction) {
+        return PersistencePromise.resolve(this.mutationQueue.slice());
+      }
+      getAllMutationBatchesAffectingDocumentKey(transaction, documentKey) {
+        const start = new DocReference(documentKey, 0);
+        const end = new DocReference(documentKey, Number.POSITIVE_INFINITY);
+        const result = [];
+        this.batchesByDocumentKey.forEachInRange([start, end], (ref) => {
+          const batch = this.findMutationBatch(ref.targetOrBatchId);
+          result.push(batch);
+        });
+        return PersistencePromise.resolve(result);
+      }
+      getAllMutationBatchesAffectingDocumentKeys(transaction, documentKeys) {
+        let uniqueBatchIDs = new SortedSet(primitiveComparator);
+        documentKeys.forEach((documentKey) => {
+          const start = new DocReference(documentKey, 0);
+          const end = new DocReference(documentKey, Number.POSITIVE_INFINITY);
+          this.batchesByDocumentKey.forEachInRange([start, end], (ref) => {
+            uniqueBatchIDs = uniqueBatchIDs.add(ref.targetOrBatchId);
+          });
+        });
+        return PersistencePromise.resolve(this.findMutationBatches(uniqueBatchIDs));
+      }
+      getAllMutationBatchesAffectingQuery(transaction, query) {
+        const prefix = query.path;
+        const immediateChildrenPathLength = prefix.length + 1;
+        let startPath = prefix;
+        if (!DocumentKey.isDocumentKey(startPath)) {
+          startPath = startPath.child("");
+        }
+        const start = new DocReference(new DocumentKey(startPath), 0);
+        let uniqueBatchIDs = new SortedSet(primitiveComparator);
+        this.batchesByDocumentKey.forEachWhile((ref) => {
+          const rowKeyPath = ref.key.path;
+          if (!prefix.isPrefixOf(rowKeyPath)) {
+            return false;
+          } else {
+            if (rowKeyPath.length === immediateChildrenPathLength) {
+              uniqueBatchIDs = uniqueBatchIDs.add(ref.targetOrBatchId);
+            }
+            return true;
+          }
+        }, start);
+        return PersistencePromise.resolve(this.findMutationBatches(uniqueBatchIDs));
+      }
+      findMutationBatches(batchIDs) {
+        const result = [];
+        batchIDs.forEach((batchId) => {
+          const batch = this.findMutationBatch(batchId);
+          if (batch !== null) {
+            result.push(batch);
+          }
+        });
+        return result;
+      }
+      removeMutationBatch(transaction, batch) {
+        const batchIndex = this.indexOfExistingBatchId(batch.batchId, "removed");
+        hardAssert(batchIndex === 0);
+        this.mutationQueue.shift();
+        let references = this.batchesByDocumentKey;
+        return PersistencePromise.forEach(batch.mutations, (mutation) => {
+          const ref = new DocReference(mutation.key, batch.batchId);
+          references = references.delete(ref);
+          return this.referenceDelegate.markPotentiallyOrphaned(transaction, mutation.key);
+        }).next(() => {
+          this.batchesByDocumentKey = references;
+        });
+      }
+      removeCachedMutationKeys(batchId) {
+      }
+      containsKey(txn, key2) {
+        const ref = new DocReference(key2, 0);
+        const firstRef = this.batchesByDocumentKey.firstAfterOrEqual(ref);
+        return PersistencePromise.resolve(key2.isEqual(firstRef && firstRef.key));
+      }
+      performConsistencyCheck(txn) {
+        if (this.mutationQueue.length === 0)
+          ;
+        return PersistencePromise.resolve();
+      }
+      /**
+       * Finds the index of the given batchId in the mutation queue and asserts that
+       * the resulting index is within the bounds of the queue.
+       *
+       * @param batchId - The batchId to search for
+       * @param action - A description of what the caller is doing, phrased in passive
+       * form (e.g. "acknowledged" in a routine that acknowledges batches).
+       */
+      indexOfExistingBatchId(batchId, action) {
+        const index16 = this.indexOfBatchId(batchId);
+        return index16;
+      }
+      /**
+       * Finds the index of the given batchId in the mutation queue. This operation
+       * is O(1).
+       *
+       * @returns The computed index of the batch with the given batchId, based on
+       * the state of the queue. Note this index can be negative if the requested
+       * batchId has already been remvoed from the queue or past the end of the
+       * queue if the batchId is larger than the last added batch.
+       */
+      indexOfBatchId(batchId) {
+        if (this.mutationQueue.length === 0) {
+          return 0;
+        }
+        const firstBatchId = this.mutationQueue[0].batchId;
+        return batchId - firstBatchId;
+      }
+      /**
+       * A version of lookupMutationBatch that doesn't return a promise, this makes
+       * other functions that uses this code easier to read and more efficent.
+       */
+      findMutationBatch(batchId) {
+        const index16 = this.indexOfBatchId(batchId);
+        if (index16 < 0 || index16 >= this.mutationQueue.length) {
+          return null;
+        }
+        const batch = this.mutationQueue[index16];
+        return batch;
+      }
+    };
+    MemoryRemoteDocumentCacheImpl = class {
+      /**
+       * @param sizer - Used to assess the size of a document. For eager GC, this is
+       * expected to just return 0 to avoid unnecessarily doing the work of
+       * calculating the size.
+       */
+      constructor(sizer) {
+        this.sizer = sizer;
+        this.docs = documentEntryMap();
+        this.size = 0;
+      }
+      setIndexManager(indexManager) {
+        this.indexManager = indexManager;
+      }
+      /**
+       * Adds the supplied entry to the cache and updates the cache size as appropriate.
+       *
+       * All calls of `addEntry`  are required to go through the RemoteDocumentChangeBuffer
+       * returned by `newChangeBuffer()`.
+       */
+      addEntry(transaction, doc2) {
+        const key2 = doc2.key;
+        const entry = this.docs.get(key2);
+        const previousSize = entry ? entry.size : 0;
+        const currentSize = this.sizer(doc2);
+        this.docs = this.docs.insert(key2, {
+          document: doc2.mutableCopy(),
+          size: currentSize
+        });
+        this.size += currentSize - previousSize;
+        return this.indexManager.addToCollectionParentIndex(transaction, key2.path.popLast());
+      }
+      /**
+       * Removes the specified entry from the cache and updates the cache size as appropriate.
+       *
+       * All calls of `removeEntry` are required to go through the RemoteDocumentChangeBuffer
+       * returned by `newChangeBuffer()`.
+       */
+      removeEntry(documentKey) {
+        const entry = this.docs.get(documentKey);
+        if (entry) {
+          this.docs = this.docs.remove(documentKey);
+          this.size -= entry.size;
+        }
+      }
+      getEntry(transaction, documentKey) {
+        const entry = this.docs.get(documentKey);
+        return PersistencePromise.resolve(entry ? entry.document.mutableCopy() : MutableDocument.newInvalidDocument(documentKey));
+      }
+      getEntries(transaction, documentKeys) {
+        let results = mutableDocumentMap();
+        documentKeys.forEach((documentKey) => {
+          const entry = this.docs.get(documentKey);
+          results = results.insert(documentKey, entry ? entry.document.mutableCopy() : MutableDocument.newInvalidDocument(documentKey));
+        });
+        return PersistencePromise.resolve(results);
+      }
+      getDocumentsMatchingQuery(transaction, query, offset, mutatedDocs) {
+        let results = mutableDocumentMap();
+        const collectionPath = query.path;
+        const prefix = new DocumentKey(collectionPath.child(""));
+        const iterator = this.docs.getIteratorFrom(prefix);
+        while (iterator.hasNext()) {
+          const { key: key2, value: { document: document2 } } = iterator.getNext();
+          if (!collectionPath.isPrefixOf(key2.path)) {
+            break;
+          }
+          if (key2.path.length > collectionPath.length + 1) {
+            continue;
+          }
+          if (indexOffsetComparator(newIndexOffsetFromDocument(document2), offset) <= 0) {
+            continue;
+          }
+          if (!mutatedDocs.has(document2.key) && !queryMatches(query, document2)) {
+            continue;
+          }
+          results = results.insert(document2.key, document2.mutableCopy());
+        }
+        return PersistencePromise.resolve(results);
+      }
+      getAllFromCollectionGroup(transaction, collectionGroup, offset, limti) {
+        fail();
+      }
+      forEachDocumentKey(transaction, f) {
+        return PersistencePromise.forEach(this.docs, (key2) => f(key2));
+      }
+      newChangeBuffer(options2) {
+        return new MemoryRemoteDocumentChangeBuffer(this);
+      }
+      getSize(txn) {
+        return PersistencePromise.resolve(this.size);
+      }
+    };
+    MemoryRemoteDocumentChangeBuffer = class extends RemoteDocumentChangeBuffer {
+      constructor(documentCache) {
+        super();
+        this.documentCache = documentCache;
+      }
+      applyChanges(transaction) {
+        const promises = [];
+        this.changes.forEach((key2, doc2) => {
+          if (doc2.isValidDocument()) {
+            promises.push(this.documentCache.addEntry(transaction, doc2));
+          } else {
+            this.documentCache.removeEntry(key2);
+          }
+        });
+        return PersistencePromise.waitFor(promises);
+      }
+      getFromCache(transaction, documentKey) {
+        return this.documentCache.getEntry(transaction, documentKey);
+      }
+      getAllFromCache(transaction, documentKeys) {
+        return this.documentCache.getEntries(transaction, documentKeys);
+      }
+    };
+    MemoryTargetCache = class {
+      constructor(persistence) {
+        this.persistence = persistence;
+        this.targets = new ObjectMap((t) => canonifyTarget(t), targetEquals);
+        this.lastRemoteSnapshotVersion = SnapshotVersion.min();
+        this.highestTargetId = 0;
+        this.highestSequenceNumber = 0;
+        this.references = new ReferenceSet();
+        this.targetCount = 0;
+        this.targetIdGenerator = TargetIdGenerator.forTargetCache();
+      }
+      forEachTarget(txn, f) {
+        this.targets.forEach((_, targetData) => f(targetData));
+        return PersistencePromise.resolve();
+      }
+      getLastRemoteSnapshotVersion(transaction) {
+        return PersistencePromise.resolve(this.lastRemoteSnapshotVersion);
+      }
+      getHighestSequenceNumber(transaction) {
+        return PersistencePromise.resolve(this.highestSequenceNumber);
+      }
+      allocateTargetId(transaction) {
+        this.highestTargetId = this.targetIdGenerator.next();
+        return PersistencePromise.resolve(this.highestTargetId);
+      }
+      setTargetsMetadata(transaction, highestListenSequenceNumber, lastRemoteSnapshotVersion) {
+        if (lastRemoteSnapshotVersion) {
+          this.lastRemoteSnapshotVersion = lastRemoteSnapshotVersion;
+        }
+        if (highestListenSequenceNumber > this.highestSequenceNumber) {
+          this.highestSequenceNumber = highestListenSequenceNumber;
+        }
+        return PersistencePromise.resolve();
+      }
+      saveTargetData(targetData) {
+        this.targets.set(targetData.target, targetData);
+        const targetId = targetData.targetId;
+        if (targetId > this.highestTargetId) {
+          this.targetIdGenerator = new TargetIdGenerator(targetId);
+          this.highestTargetId = targetId;
+        }
+        if (targetData.sequenceNumber > this.highestSequenceNumber) {
+          this.highestSequenceNumber = targetData.sequenceNumber;
+        }
+      }
+      addTargetData(transaction, targetData) {
+        this.saveTargetData(targetData);
+        this.targetCount += 1;
+        return PersistencePromise.resolve();
+      }
+      updateTargetData(transaction, targetData) {
+        this.saveTargetData(targetData);
+        return PersistencePromise.resolve();
+      }
+      removeTargetData(transaction, targetData) {
+        this.targets.delete(targetData.target);
+        this.references.removeReferencesForId(targetData.targetId);
+        this.targetCount -= 1;
+        return PersistencePromise.resolve();
+      }
+      removeTargets(transaction, upperBound, activeTargetIds) {
+        let count = 0;
+        const removals = [];
+        this.targets.forEach((key2, targetData) => {
+          if (targetData.sequenceNumber <= upperBound && activeTargetIds.get(targetData.targetId) === null) {
+            this.targets.delete(key2);
+            removals.push(this.removeMatchingKeysForTargetId(transaction, targetData.targetId));
+            count++;
+          }
+        });
+        return PersistencePromise.waitFor(removals).next(() => count);
+      }
+      getTargetCount(transaction) {
+        return PersistencePromise.resolve(this.targetCount);
+      }
+      getTargetData(transaction, target) {
+        const targetData = this.targets.get(target) || null;
+        return PersistencePromise.resolve(targetData);
+      }
+      addMatchingKeys(txn, keys, targetId) {
+        this.references.addReferences(keys, targetId);
+        return PersistencePromise.resolve();
+      }
+      removeMatchingKeys(txn, keys, targetId) {
+        this.references.removeReferences(keys, targetId);
+        const referenceDelegate = this.persistence.referenceDelegate;
+        const promises = [];
+        if (referenceDelegate) {
+          keys.forEach((key2) => {
+            promises.push(referenceDelegate.markPotentiallyOrphaned(txn, key2));
+          });
+        }
+        return PersistencePromise.waitFor(promises);
+      }
+      removeMatchingKeysForTargetId(txn, targetId) {
+        this.references.removeReferencesForId(targetId);
+        return PersistencePromise.resolve();
+      }
+      getMatchingKeysForTargetId(txn, targetId) {
+        const matchingKeys = this.references.referencesForId(targetId);
+        return PersistencePromise.resolve(matchingKeys);
+      }
+      containsKey(txn, key2) {
+        return PersistencePromise.resolve(this.references.containsKey(key2));
+      }
+    };
+    LOG_TAG$d = "MemoryPersistence";
+    MemoryPersistence = class {
+      /**
+       * The constructor accepts a factory for creating a reference delegate. This
+       * allows both the delegate and this instance to have strong references to
+       * each other without having nullable fields that would then need to be
+       * checked or asserted on every access.
+       */
+      constructor(referenceDelegateFactory, serializer) {
+        this.mutationQueues = {};
+        this.overlays = {};
+        this.listenSequence = new ListenSequence(0);
+        this._started = false;
+        this._started = true;
+        this.referenceDelegate = referenceDelegateFactory(this);
+        this.targetCache = new MemoryTargetCache(this);
+        const sizer = (doc2) => this.referenceDelegate.documentSize(doc2);
+        this.indexManager = new MemoryIndexManager();
+        this.remoteDocumentCache = newMemoryRemoteDocumentCache(sizer);
+        this.serializer = new LocalSerializer(serializer);
+        this.bundleCache = new MemoryBundleCache(this.serializer);
+      }
+      start() {
+        return Promise.resolve();
+      }
+      shutdown() {
+        this._started = false;
+        return Promise.resolve();
+      }
+      get started() {
+        return this._started;
+      }
+      setDatabaseDeletedListener() {
+      }
+      setNetworkEnabled() {
+      }
+      getIndexManager(user2) {
+        return this.indexManager;
+      }
+      getDocumentOverlayCache(user2) {
+        let overlay = this.overlays[user2.toKey()];
+        if (!overlay) {
+          overlay = new MemoryDocumentOverlayCache();
+          this.overlays[user2.toKey()] = overlay;
+        }
+        return overlay;
+      }
+      getMutationQueue(user2, indexManager) {
+        let queue = this.mutationQueues[user2.toKey()];
+        if (!queue) {
+          queue = new MemoryMutationQueue(indexManager, this.referenceDelegate);
+          this.mutationQueues[user2.toKey()] = queue;
+        }
+        return queue;
+      }
+      getTargetCache() {
+        return this.targetCache;
+      }
+      getRemoteDocumentCache() {
+        return this.remoteDocumentCache;
+      }
+      getBundleCache() {
+        return this.bundleCache;
+      }
+      runTransaction(action, mode, transactionOperation) {
+        logDebug(LOG_TAG$d, "Starting transaction:", action);
+        const txn = new MemoryTransaction(this.listenSequence.next());
+        this.referenceDelegate.onTransactionStarted();
+        return transactionOperation(txn).next((result) => {
+          return this.referenceDelegate.onTransactionCommitted(txn).next(() => result);
+        }).toPromise().then((result) => {
+          txn.raiseOnCommittedEvent();
+          return result;
+        });
+      }
+      mutationQueuesContainKey(transaction, key2) {
+        return PersistencePromise.or(Object.values(this.mutationQueues).map((queue) => () => queue.containsKey(transaction, key2)));
+      }
+    };
+    MemoryTransaction = class extends PersistenceTransaction {
+      constructor(currentSequenceNumber) {
+        super();
+        this.currentSequenceNumber = currentSequenceNumber;
+      }
+    };
+    MemoryEagerDelegate = class {
+      constructor(persistence) {
+        this.persistence = persistence;
+        this.localViewReferences = new ReferenceSet();
+        this._orphanedDocuments = null;
+      }
+      static factory(persistence) {
+        return new MemoryEagerDelegate(persistence);
+      }
+      get orphanedDocuments() {
+        if (!this._orphanedDocuments) {
+          throw fail();
+        } else {
+          return this._orphanedDocuments;
+        }
+      }
+      addReference(txn, targetId, key2) {
+        this.localViewReferences.addReference(key2, targetId);
+        this.orphanedDocuments.delete(key2.toString());
+        return PersistencePromise.resolve();
+      }
+      removeReference(txn, targetId, key2) {
+        this.localViewReferences.removeReference(key2, targetId);
+        this.orphanedDocuments.add(key2.toString());
+        return PersistencePromise.resolve();
+      }
+      markPotentiallyOrphaned(txn, key2) {
+        this.orphanedDocuments.add(key2.toString());
+        return PersistencePromise.resolve();
+      }
+      removeTarget(txn, targetData) {
+        const orphaned = this.localViewReferences.removeReferencesForId(targetData.targetId);
+        orphaned.forEach((key2) => this.orphanedDocuments.add(key2.toString()));
+        const cache = this.persistence.getTargetCache();
+        return cache.getMatchingKeysForTargetId(txn, targetData.targetId).next((keys) => {
+          keys.forEach((key2) => this.orphanedDocuments.add(key2.toString()));
+        }).next(() => cache.removeTargetData(txn, targetData));
+      }
+      onTransactionStarted() {
+        this._orphanedDocuments = /* @__PURE__ */ new Set();
+      }
+      onTransactionCommitted(txn) {
+        const cache = this.persistence.getRemoteDocumentCache();
+        const changeBuffer = cache.newChangeBuffer();
+        return PersistencePromise.forEach(this.orphanedDocuments, (path) => {
+          const key2 = DocumentKey.fromPath(path);
+          return this.isReferenced(txn, key2).next((isReferenced) => {
+            if (!isReferenced) {
+              changeBuffer.removeEntry(key2, SnapshotVersion.min());
+            }
+          });
+        }).next(() => {
+          this._orphanedDocuments = null;
+          return changeBuffer.apply(txn);
+        });
+      }
+      updateLimboDocument(txn, key2) {
+        return this.isReferenced(txn, key2).next((isReferenced) => {
+          if (isReferenced) {
+            this.orphanedDocuments.delete(key2.toString());
+          } else {
+            this.orphanedDocuments.add(key2.toString());
+          }
+        });
+      }
+      documentSize(doc2) {
+        return 0;
+      }
+      isReferenced(txn, key2) {
+        return PersistencePromise.or([
+          () => PersistencePromise.resolve(this.localViewReferences.containsKey(key2)),
+          () => this.persistence.getTargetCache().containsKey(txn, key2),
+          () => this.persistence.mutationQueuesContainKey(txn, key2)
+        ]);
+      }
+    };
     MAX_CLIENT_AGE_MS = 30 * 60 * 1e3;
+    LOG_TAG$b = "LocalStore";
     RESUME_TOKEN_MAX_AGE_MICROS = 5 * 60 * 1e6;
+    LocalStoreImpl = class {
+      constructor(persistence, queryEngine, initialUser, serializer) {
+        this.persistence = persistence;
+        this.queryEngine = queryEngine;
+        this.serializer = serializer;
+        this.targetDataByTarget = new SortedMap(primitiveComparator);
+        this.targetIdByTarget = new ObjectMap((t) => canonifyTarget(t), targetEquals);
+        this.collectionGroupReadTime = /* @__PURE__ */ new Map();
+        this.remoteDocuments = persistence.getRemoteDocumentCache();
+        this.targetCache = persistence.getTargetCache();
+        this.bundleCache = persistence.getBundleCache();
+        this.initializeUserComponents(initialUser);
+      }
+      initializeUserComponents(user2) {
+        this.documentOverlayCache = this.persistence.getDocumentOverlayCache(user2);
+        this.indexManager = this.persistence.getIndexManager(user2);
+        this.mutationQueue = this.persistence.getMutationQueue(user2, this.indexManager);
+        this.localDocuments = new LocalDocumentsView(this.remoteDocuments, this.mutationQueue, this.documentOverlayCache, this.indexManager);
+        this.remoteDocuments.setIndexManager(this.indexManager);
+        this.queryEngine.initialize(this.localDocuments, this.indexManager);
+      }
+      collectGarbage(garbageCollector) {
+        return this.persistence.runTransaction("Collect garbage", "readwrite-primary", (txn) => garbageCollector.collect(txn, this.targetDataByTarget));
+      }
+    };
+    QueryContext = class {
+      constructor() {
+        this._documentReadCount = 0;
+      }
+      get documentReadCount() {
+        return this._documentReadCount;
+      }
+      incrementDocumentReadCount(amount) {
+        this._documentReadCount += amount;
+      }
+    };
+    DEFAULT_INDEX_AUTO_CREATION_MIN_COLLECTION_SIZE = 100;
+    DEFAULT_RELATIVE_INDEX_READ_COST_PER_DOCUMENT = 8;
+    QueryEngine = class {
+      constructor() {
+        this.initialized = false;
+        this.indexAutoCreationEnabled = false;
+        this.indexAutoCreationMinCollectionSize = DEFAULT_INDEX_AUTO_CREATION_MIN_COLLECTION_SIZE;
+        this.relativeIndexReadCostPerDocument = DEFAULT_RELATIVE_INDEX_READ_COST_PER_DOCUMENT;
+      }
+      /** Sets the document view to query against. */
+      initialize(localDocuments, indexManager) {
+        this.localDocumentsView = localDocuments;
+        this.indexManager = indexManager;
+        this.initialized = true;
+      }
+      /** Returns all local documents matching the specified query. */
+      getDocumentsMatchingQuery(transaction, query, lastLimboFreeSnapshotVersion, remoteKeys) {
+        const queryResult = { result: null };
+        return this.performQueryUsingIndex(transaction, query).next((result) => {
+          queryResult.result = result;
+        }).next(() => {
+          if (queryResult.result) {
+            return;
+          }
+          return this.performQueryUsingRemoteKeys(transaction, query, remoteKeys, lastLimboFreeSnapshotVersion).next((result) => {
+            queryResult.result = result;
+          });
+        }).next(() => {
+          if (queryResult.result) {
+            return;
+          }
+          const context = new QueryContext();
+          return this.executeFullCollectionScan(transaction, query, context).next((result) => {
+            queryResult.result = result;
+            if (this.indexAutoCreationEnabled) {
+              return this.createCacheIndexes(transaction, query, context, result.size);
+            }
+          });
+        }).next(() => queryResult.result);
+      }
+      createCacheIndexes(transaction, query, context, resultSize) {
+        if (context.documentReadCount < this.indexAutoCreationMinCollectionSize) {
+          if (getLogLevel() <= LogLevel.DEBUG) {
+            logDebug("QueryEngine", "SDK will not create cache indexes for query:", stringifyQuery(query), "since it only creates cache indexes for collection contains", "more than or equal to", this.indexAutoCreationMinCollectionSize, "documents");
+          }
+          return PersistencePromise.resolve();
+        }
+        if (getLogLevel() <= LogLevel.DEBUG) {
+          logDebug("QueryEngine", "Query:", stringifyQuery(query), "scans", context.documentReadCount, "local documents and returns", resultSize, "documents as results.");
+        }
+        if (context.documentReadCount > this.relativeIndexReadCostPerDocument * resultSize) {
+          if (getLogLevel() <= LogLevel.DEBUG) {
+            logDebug("QueryEngine", "The SDK decides to create cache indexes for query:", stringifyQuery(query), "as using cache indexes may help improve performance.");
+          }
+          return this.indexManager.createTargetIndexes(transaction, queryToTarget(query));
+        }
+        return PersistencePromise.resolve();
+      }
+      /**
+       * Performs an indexed query that evaluates the query based on a collection's
+       * persisted index values. Returns `null` if an index is not available.
+       */
+      performQueryUsingIndex(transaction, query) {
+        if (queryMatchesAllDocuments(query)) {
+          return PersistencePromise.resolve(null);
+        }
+        let target = queryToTarget(query);
+        return this.indexManager.getIndexType(transaction, target).next((indexType) => {
+          if (indexType === 0) {
+            return null;
+          }
+          if (query.limit !== null && indexType === 1) {
+            query = queryWithLimit(
+              query,
+              null,
+              "F"
+              /* LimitType.First */
+            );
+            target = queryToTarget(query);
+          }
+          return this.indexManager.getDocumentsMatchingTarget(transaction, target).next((keys) => {
+            const sortedKeys = documentKeySet(...keys);
+            return this.localDocumentsView.getDocuments(transaction, sortedKeys).next((indexedDocuments) => {
+              return this.indexManager.getMinOffset(transaction, target).next((offset) => {
+                const previousResults = this.applyQuery(query, indexedDocuments);
+                if (this.needsRefill(query, previousResults, sortedKeys, offset.readTime)) {
+                  return this.performQueryUsingIndex(transaction, queryWithLimit(
+                    query,
+                    null,
+                    "F"
+                    /* LimitType.First */
+                  ));
+                }
+                return this.appendRemainingResults(transaction, previousResults, query, offset);
+              });
+            });
+          });
+        });
+      }
+      /**
+       * Performs a query based on the target's persisted query mapping. Returns
+       * `null` if the mapping is not available or cannot be used.
+       */
+      performQueryUsingRemoteKeys(transaction, query, remoteKeys, lastLimboFreeSnapshotVersion) {
+        if (queryMatchesAllDocuments(query)) {
+          return PersistencePromise.resolve(null);
+        }
+        if (lastLimboFreeSnapshotVersion.isEqual(SnapshotVersion.min())) {
+          return PersistencePromise.resolve(null);
+        }
+        return this.localDocumentsView.getDocuments(transaction, remoteKeys).next((documents) => {
+          const previousResults = this.applyQuery(query, documents);
+          if (this.needsRefill(query, previousResults, remoteKeys, lastLimboFreeSnapshotVersion)) {
+            return PersistencePromise.resolve(null);
+          }
+          if (getLogLevel() <= LogLevel.DEBUG) {
+            logDebug("QueryEngine", "Re-using previous result from %s to execute query: %s", lastLimboFreeSnapshotVersion.toString(), stringifyQuery(query));
+          }
+          return this.appendRemainingResults(transaction, previousResults, query, newIndexOffsetSuccessorFromReadTime(lastLimboFreeSnapshotVersion, INITIAL_LARGEST_BATCH_ID)).next((results) => results);
+        });
+      }
+      /** Applies the query filter and sorting to the provided documents.  */
+      applyQuery(query, documents) {
+        let queryResults = new SortedSet(newQueryComparator(query));
+        documents.forEach((_, maybeDoc) => {
+          if (queryMatches(query, maybeDoc)) {
+            queryResults = queryResults.add(maybeDoc);
+          }
+        });
+        return queryResults;
+      }
+      /**
+       * Determines if a limit query needs to be refilled from cache, making it
+       * ineligible for index-free execution.
+       *
+       * @param query - The query.
+       * @param sortedPreviousResults - The documents that matched the query when it
+       * was last synchronized, sorted by the query's comparator.
+       * @param remoteKeys - The document keys that matched the query at the last
+       * snapshot.
+       * @param limboFreeSnapshotVersion - The version of the snapshot when the
+       * query was last synchronized.
+       */
+      needsRefill(query, sortedPreviousResults, remoteKeys, limboFreeSnapshotVersion) {
+        if (query.limit === null) {
+          return false;
+        }
+        if (remoteKeys.size !== sortedPreviousResults.size) {
+          return true;
+        }
+        const docAtLimitEdge = query.limitType === "F" ? sortedPreviousResults.last() : sortedPreviousResults.first();
+        if (!docAtLimitEdge) {
+          return false;
+        }
+        return docAtLimitEdge.hasPendingWrites || docAtLimitEdge.version.compareTo(limboFreeSnapshotVersion) > 0;
+      }
+      executeFullCollectionScan(transaction, query, context) {
+        if (getLogLevel() <= LogLevel.DEBUG) {
+          logDebug("QueryEngine", "Using full collection scan to execute query:", stringifyQuery(query));
+        }
+        return this.localDocumentsView.getDocumentsMatchingQuery(transaction, query, IndexOffset.min(), context);
+      }
+      /**
+       * Combines the results from an indexed execution with the remaining documents
+       * that have not yet been indexed.
+       */
+      appendRemainingResults(transaction, indexedResults, query, offset) {
+        return this.localDocumentsView.getDocumentsMatchingQuery(transaction, query, offset).next((remainingResults) => {
+          indexedResults.forEach((d) => {
+            remainingResults = remainingResults.insert(d.key, d);
+          });
+          return remainingResults;
+        });
+      }
+    };
+    LocalClientState = class {
+      constructor() {
+        this.activeTargetIds = targetIdSet();
+      }
+      addQueryTarget(targetId) {
+        this.activeTargetIds = this.activeTargetIds.add(targetId);
+      }
+      removeQueryTarget(targetId) {
+        this.activeTargetIds = this.activeTargetIds.delete(targetId);
+      }
+      /**
+       * Converts this entry into a JSON-encoded format we can use for WebStorage.
+       * Does not encode `clientId` as it is part of the key in WebStorage.
+       */
+      toWebStorageJSON() {
+        const data = {
+          activeTargetIds: this.activeTargetIds.toArray(),
+          updateTimeMs: Date.now()
+          // Modify the existing value to trigger update.
+        };
+        return JSON.stringify(data);
+      }
+    };
+    MemorySharedClientState = class {
+      constructor() {
+        this.localState = new LocalClientState();
+        this.queryState = {};
+        this.onlineStateHandler = null;
+        this.sequenceNumberHandler = null;
+      }
+      addPendingMutation(batchId) {
+      }
+      updateMutationState(batchId, state, error2) {
+      }
+      addLocalQueryTarget(targetId) {
+        this.localState.addQueryTarget(targetId);
+        return this.queryState[targetId] || "not-current";
+      }
+      updateQueryState(targetId, state, error2) {
+        this.queryState[targetId] = state;
+      }
+      removeLocalQueryTarget(targetId) {
+        this.localState.removeQueryTarget(targetId);
+      }
+      isLocalQueryTarget(targetId) {
+        return this.localState.activeTargetIds.has(targetId);
+      }
+      clearQueryState(targetId) {
+        delete this.queryState[targetId];
+      }
+      getAllActiveQueryTargets() {
+        return this.localState.activeTargetIds;
+      }
+      isActiveQueryTarget(targetId) {
+        return this.localState.activeTargetIds.has(targetId);
+      }
+      start() {
+        this.localState = new LocalClientState();
+        return Promise.resolve();
+      }
+      handleUserChange(user2, removedBatchIds, addedBatchIds) {
+      }
+      setOnlineState(onlineState) {
+      }
+      shutdown() {
+      }
+      writeSequenceNumber(sequenceNumber) {
+      }
+      notifyBundleLoaded(collectionGroups) {
+      }
+    };
+    NoopConnectivityMonitor = class {
+      addCallback(callback) {
+      }
+      shutdown() {
+      }
+    };
+    StreamBridge = class {
+      constructor(args) {
+        this.sendFn = args.sendFn;
+        this.closeFn = args.closeFn;
+      }
+      onOpen(callback) {
+        this.wrappedOnOpen = callback;
+      }
+      onClose(callback) {
+        this.wrappedOnClose = callback;
+      }
+      onMessage(callback) {
+        this.wrappedOnMessage = callback;
+      }
+      close() {
+        this.closeFn();
+      }
+      send(msg) {
+        this.sendFn(msg);
+      }
+      callOnOpen() {
+        this.wrappedOnOpen();
+      }
+      callOnClose(err) {
+        this.wrappedOnClose(err);
+      }
+      callOnMessage(msg) {
+        this.wrappedOnMessage(msg);
+      }
+    };
+    lastUniqueDebugId = null;
     grpcVersion = "1.9.1";
+    LOG_TAG$9 = "GrpcConnection";
     X_GOOG_API_CLIENT_VALUE = `gl-node/${process.versions.node} fire/${SDK_VERSION2} grpc/${grpcVersion}`;
+    GrpcConnection = class {
+      constructor(protos2, databaseInfo) {
+        this.databaseInfo = databaseInfo;
+        this.cachedStub = null;
+        this.firestore = protos2["google"]["firestore"]["v1"];
+        this.databasePath = `projects/${databaseInfo.databaseId.projectId}/databases/${databaseInfo.databaseId.database}`;
+      }
+      get shouldResourcePathBeIncludedInRequest() {
+        return true;
+      }
+      ensureActiveStub() {
+        if (!this.cachedStub) {
+          logDebug(LOG_TAG$9, "Creating Firestore stub.");
+          const credentials2 = this.databaseInfo.ssl ? grpc.credentials.createSsl() : grpc.credentials.createInsecure();
+          this.cachedStub = new this.firestore.Firestore(this.databaseInfo.host, credentials2);
+        }
+        return this.cachedStub;
+      }
+      invokeRPC(rpcName, path, request, authToken, appCheckToken) {
+        const streamId = generateUniqueDebugId();
+        const stub = this.ensureActiveStub();
+        const metadata = createMetadata(this.databasePath, authToken, appCheckToken, this.databaseInfo.appId);
+        const jsonRequest = Object.assign({ database: this.databasePath }, request);
+        return nodePromise((callback) => {
+          logDebug(LOG_TAG$9, `RPC '${rpcName}' ${streamId} invoked with request:`, request);
+          return stub[rpcName](jsonRequest, metadata, (grpcError, value) => {
+            if (grpcError) {
+              logDebug(LOG_TAG$9, `RPC '${rpcName}' ${streamId} failed with error:`, grpcError);
+              callback(new FirestoreError(mapCodeFromRpcCode(grpcError.code), grpcError.message));
+            } else {
+              logDebug(LOG_TAG$9, `RPC '${rpcName}' ${streamId} completed with response:`, value);
+              callback(void 0, value);
+            }
+          });
+        });
+      }
+      invokeStreamingRPC(rpcName, path, request, authToken, appCheckToken, expectedResponseCount) {
+        const streamId = generateUniqueDebugId();
+        const results = [];
+        const responseDeferred = new Deferred2();
+        logDebug(LOG_TAG$9, `RPC '${rpcName}' ${streamId} invoked (streaming) with request:`, request);
+        const stub = this.ensureActiveStub();
+        const metadata = createMetadata(this.databasePath, authToken, appCheckToken, this.databaseInfo.appId);
+        const jsonRequest = Object.assign(Object.assign({}, request), { database: this.databasePath });
+        const stream = stub[rpcName](jsonRequest, metadata);
+        let callbackFired = false;
+        stream.on("data", (response) => {
+          logDebug(LOG_TAG$9, `RPC ${rpcName} ${streamId} received result:`, response);
+          results.push(response);
+          if (expectedResponseCount !== void 0 && results.length === expectedResponseCount) {
+            callbackFired = true;
+            responseDeferred.resolve(results);
+          }
+        });
+        stream.on("end", () => {
+          logDebug(LOG_TAG$9, `RPC '${rpcName}' ${streamId} completed.`);
+          if (!callbackFired) {
+            callbackFired = true;
+            responseDeferred.resolve(results);
+          }
+        });
+        stream.on("error", (grpcError) => {
+          logDebug(LOG_TAG$9, `RPC '${rpcName}' ${streamId} failed with error:`, grpcError);
+          const code = mapCodeFromRpcCode(grpcError.code);
+          responseDeferred.reject(new FirestoreError(code, grpcError.message));
+        });
+        return responseDeferred.promise;
+      }
+      // TODO(mikelehen): This "method" is a monster. Should be refactored.
+      openStream(rpcName, authToken, appCheckToken) {
+        const streamId = generateUniqueDebugId();
+        const stub = this.ensureActiveStub();
+        const metadata = createMetadata(this.databasePath, authToken, appCheckToken, this.databaseInfo.appId);
+        const grpcStream = stub[rpcName](metadata);
+        let closed = false;
+        const close = (err) => {
+          if (!closed) {
+            closed = true;
+            stream.callOnClose(err);
+            grpcStream.end();
+          }
+        };
+        const stream = new StreamBridge({
+          sendFn: (msg) => {
+            if (!closed) {
+              logDebug(LOG_TAG$9, `RPC '${rpcName}' stream ${streamId} sending:`, msg);
+              try {
+                grpcStream.write(msg);
+              } catch (e) {
+                logError("Failure sending:", msg);
+                logError("Error:", e);
+                throw e;
+              }
+            } else {
+              logDebug(LOG_TAG$9, `RPC '${rpcName}' stream ${streamId} not sending because gRPC stream is closed:`, msg);
+            }
+          },
+          closeFn: () => {
+            logDebug(LOG_TAG$9, `RPC '${rpcName}' stream ${streamId} closed locally via close().`);
+            close();
+          }
+        });
+        grpcStream.on("data", (msg) => {
+          if (!closed) {
+            logDebug(LOG_TAG$9, `RPC '${rpcName}' stream ${streamId} received:`, msg);
+            stream.callOnMessage(msg);
+          }
+        });
+        grpcStream.on("end", () => {
+          logDebug(LOG_TAG$9, `RPC '${rpcName}' stream ${streamId} ended.`);
+          close();
+        });
+        grpcStream.on("error", (grpcError) => {
+          if (!closed) {
+            logWarn(LOG_TAG$9, `RPC '${rpcName}' stream ${streamId} error. Code:`, grpcError.code, "Message:", grpcError.message);
+            const code = mapCodeFromRpcCode(grpcError.code);
+            close(new FirestoreError(code, grpcError.message));
+          }
+        });
+        logDebug(LOG_TAG$9, `Opening RPC '${rpcName}' stream ${streamId} to ${this.databaseInfo.host}`);
+        setTimeout(() => {
+          stream.callOnOpen();
+        }, 0);
+        return stream;
+      }
+    };
+    nested = {
+      google: {
+        nested: {
+          protobuf: {
+            options: {
+              csharp_namespace: "Google.Protobuf.WellKnownTypes",
+              go_package: "github.com/golang/protobuf/ptypes/wrappers",
+              java_package: "com.google.protobuf",
+              java_outer_classname: "WrappersProto",
+              java_multiple_files: true,
+              objc_class_prefix: "GPB",
+              cc_enable_arenas: true,
+              optimize_for: "SPEED"
+            },
+            nested: {
+              Timestamp: {
+                fields: {
+                  seconds: {
+                    type: "int64",
+                    id: 1
+                  },
+                  nanos: {
+                    type: "int32",
+                    id: 2
+                  }
+                }
+              },
+              FileDescriptorSet: {
+                fields: {
+                  file: {
+                    rule: "repeated",
+                    type: "FileDescriptorProto",
+                    id: 1
+                  }
+                }
+              },
+              FileDescriptorProto: {
+                fields: {
+                  name: {
+                    type: "string",
+                    id: 1
+                  },
+                  "package": {
+                    type: "string",
+                    id: 2
+                  },
+                  dependency: {
+                    rule: "repeated",
+                    type: "string",
+                    id: 3
+                  },
+                  publicDependency: {
+                    rule: "repeated",
+                    type: "int32",
+                    id: 10,
+                    options: {
+                      packed: false
+                    }
+                  },
+                  weakDependency: {
+                    rule: "repeated",
+                    type: "int32",
+                    id: 11,
+                    options: {
+                      packed: false
+                    }
+                  },
+                  messageType: {
+                    rule: "repeated",
+                    type: "DescriptorProto",
+                    id: 4
+                  },
+                  enumType: {
+                    rule: "repeated",
+                    type: "EnumDescriptorProto",
+                    id: 5
+                  },
+                  service: {
+                    rule: "repeated",
+                    type: "ServiceDescriptorProto",
+                    id: 6
+                  },
+                  extension: {
+                    rule: "repeated",
+                    type: "FieldDescriptorProto",
+                    id: 7
+                  },
+                  options: {
+                    type: "FileOptions",
+                    id: 8
+                  },
+                  sourceCodeInfo: {
+                    type: "SourceCodeInfo",
+                    id: 9
+                  },
+                  syntax: {
+                    type: "string",
+                    id: 12
+                  }
+                }
+              },
+              DescriptorProto: {
+                fields: {
+                  name: {
+                    type: "string",
+                    id: 1
+                  },
+                  field: {
+                    rule: "repeated",
+                    type: "FieldDescriptorProto",
+                    id: 2
+                  },
+                  extension: {
+                    rule: "repeated",
+                    type: "FieldDescriptorProto",
+                    id: 6
+                  },
+                  nestedType: {
+                    rule: "repeated",
+                    type: "DescriptorProto",
+                    id: 3
+                  },
+                  enumType: {
+                    rule: "repeated",
+                    type: "EnumDescriptorProto",
+                    id: 4
+                  },
+                  extensionRange: {
+                    rule: "repeated",
+                    type: "ExtensionRange",
+                    id: 5
+                  },
+                  oneofDecl: {
+                    rule: "repeated",
+                    type: "OneofDescriptorProto",
+                    id: 8
+                  },
+                  options: {
+                    type: "MessageOptions",
+                    id: 7
+                  },
+                  reservedRange: {
+                    rule: "repeated",
+                    type: "ReservedRange",
+                    id: 9
+                  },
+                  reservedName: {
+                    rule: "repeated",
+                    type: "string",
+                    id: 10
+                  }
+                },
+                nested: {
+                  ExtensionRange: {
+                    fields: {
+                      start: {
+                        type: "int32",
+                        id: 1
+                      },
+                      end: {
+                        type: "int32",
+                        id: 2
+                      }
+                    }
+                  },
+                  ReservedRange: {
+                    fields: {
+                      start: {
+                        type: "int32",
+                        id: 1
+                      },
+                      end: {
+                        type: "int32",
+                        id: 2
+                      }
+                    }
+                  }
+                }
+              },
+              FieldDescriptorProto: {
+                fields: {
+                  name: {
+                    type: "string",
+                    id: 1
+                  },
+                  number: {
+                    type: "int32",
+                    id: 3
+                  },
+                  label: {
+                    type: "Label",
+                    id: 4
+                  },
+                  type: {
+                    type: "Type",
+                    id: 5
+                  },
+                  typeName: {
+                    type: "string",
+                    id: 6
+                  },
+                  extendee: {
+                    type: "string",
+                    id: 2
+                  },
+                  defaultValue: {
+                    type: "string",
+                    id: 7
+                  },
+                  oneofIndex: {
+                    type: "int32",
+                    id: 9
+                  },
+                  jsonName: {
+                    type: "string",
+                    id: 10
+                  },
+                  options: {
+                    type: "FieldOptions",
+                    id: 8
+                  }
+                },
+                nested: {
+                  Type: {
+                    values: {
+                      TYPE_DOUBLE: 1,
+                      TYPE_FLOAT: 2,
+                      TYPE_INT64: 3,
+                      TYPE_UINT64: 4,
+                      TYPE_INT32: 5,
+                      TYPE_FIXED64: 6,
+                      TYPE_FIXED32: 7,
+                      TYPE_BOOL: 8,
+                      TYPE_STRING: 9,
+                      TYPE_GROUP: 10,
+                      TYPE_MESSAGE: 11,
+                      TYPE_BYTES: 12,
+                      TYPE_UINT32: 13,
+                      TYPE_ENUM: 14,
+                      TYPE_SFIXED32: 15,
+                      TYPE_SFIXED64: 16,
+                      TYPE_SINT32: 17,
+                      TYPE_SINT64: 18
+                    }
+                  },
+                  Label: {
+                    values: {
+                      LABEL_OPTIONAL: 1,
+                      LABEL_REQUIRED: 2,
+                      LABEL_REPEATED: 3
+                    }
+                  }
+                }
+              },
+              OneofDescriptorProto: {
+                fields: {
+                  name: {
+                    type: "string",
+                    id: 1
+                  },
+                  options: {
+                    type: "OneofOptions",
+                    id: 2
+                  }
+                }
+              },
+              EnumDescriptorProto: {
+                fields: {
+                  name: {
+                    type: "string",
+                    id: 1
+                  },
+                  value: {
+                    rule: "repeated",
+                    type: "EnumValueDescriptorProto",
+                    id: 2
+                  },
+                  options: {
+                    type: "EnumOptions",
+                    id: 3
+                  }
+                }
+              },
+              EnumValueDescriptorProto: {
+                fields: {
+                  name: {
+                    type: "string",
+                    id: 1
+                  },
+                  number: {
+                    type: "int32",
+                    id: 2
+                  },
+                  options: {
+                    type: "EnumValueOptions",
+                    id: 3
+                  }
+                }
+              },
+              ServiceDescriptorProto: {
+                fields: {
+                  name: {
+                    type: "string",
+                    id: 1
+                  },
+                  method: {
+                    rule: "repeated",
+                    type: "MethodDescriptorProto",
+                    id: 2
+                  },
+                  options: {
+                    type: "ServiceOptions",
+                    id: 3
+                  }
+                }
+              },
+              MethodDescriptorProto: {
+                fields: {
+                  name: {
+                    type: "string",
+                    id: 1
+                  },
+                  inputType: {
+                    type: "string",
+                    id: 2
+                  },
+                  outputType: {
+                    type: "string",
+                    id: 3
+                  },
+                  options: {
+                    type: "MethodOptions",
+                    id: 4
+                  },
+                  clientStreaming: {
+                    type: "bool",
+                    id: 5
+                  },
+                  serverStreaming: {
+                    type: "bool",
+                    id: 6
+                  }
+                }
+              },
+              FileOptions: {
+                fields: {
+                  javaPackage: {
+                    type: "string",
+                    id: 1
+                  },
+                  javaOuterClassname: {
+                    type: "string",
+                    id: 8
+                  },
+                  javaMultipleFiles: {
+                    type: "bool",
+                    id: 10
+                  },
+                  javaGenerateEqualsAndHash: {
+                    type: "bool",
+                    id: 20,
+                    options: {
+                      deprecated: true
+                    }
+                  },
+                  javaStringCheckUtf8: {
+                    type: "bool",
+                    id: 27
+                  },
+                  optimizeFor: {
+                    type: "OptimizeMode",
+                    id: 9,
+                    options: {
+                      "default": "SPEED"
+                    }
+                  },
+                  goPackage: {
+                    type: "string",
+                    id: 11
+                  },
+                  ccGenericServices: {
+                    type: "bool",
+                    id: 16
+                  },
+                  javaGenericServices: {
+                    type: "bool",
+                    id: 17
+                  },
+                  pyGenericServices: {
+                    type: "bool",
+                    id: 18
+                  },
+                  deprecated: {
+                    type: "bool",
+                    id: 23
+                  },
+                  ccEnableArenas: {
+                    type: "bool",
+                    id: 31
+                  },
+                  objcClassPrefix: {
+                    type: "string",
+                    id: 36
+                  },
+                  csharpNamespace: {
+                    type: "string",
+                    id: 37
+                  },
+                  uninterpretedOption: {
+                    rule: "repeated",
+                    type: "UninterpretedOption",
+                    id: 999
+                  }
+                },
+                extensions: [
+                  [
+                    1e3,
+                    536870911
+                  ]
+                ],
+                reserved: [
+                  [
+                    38,
+                    38
+                  ]
+                ],
+                nested: {
+                  OptimizeMode: {
+                    values: {
+                      SPEED: 1,
+                      CODE_SIZE: 2,
+                      LITE_RUNTIME: 3
+                    }
+                  }
+                }
+              },
+              MessageOptions: {
+                fields: {
+                  messageSetWireFormat: {
+                    type: "bool",
+                    id: 1
+                  },
+                  noStandardDescriptorAccessor: {
+                    type: "bool",
+                    id: 2
+                  },
+                  deprecated: {
+                    type: "bool",
+                    id: 3
+                  },
+                  mapEntry: {
+                    type: "bool",
+                    id: 7
+                  },
+                  uninterpretedOption: {
+                    rule: "repeated",
+                    type: "UninterpretedOption",
+                    id: 999
+                  }
+                },
+                extensions: [
+                  [
+                    1e3,
+                    536870911
+                  ]
+                ],
+                reserved: [
+                  [
+                    8,
+                    8
+                  ]
+                ]
+              },
+              FieldOptions: {
+                fields: {
+                  ctype: {
+                    type: "CType",
+                    id: 1,
+                    options: {
+                      "default": "STRING"
+                    }
+                  },
+                  packed: {
+                    type: "bool",
+                    id: 2
+                  },
+                  jstype: {
+                    type: "JSType",
+                    id: 6,
+                    options: {
+                      "default": "JS_NORMAL"
+                    }
+                  },
+                  lazy: {
+                    type: "bool",
+                    id: 5
+                  },
+                  deprecated: {
+                    type: "bool",
+                    id: 3
+                  },
+                  weak: {
+                    type: "bool",
+                    id: 10
+                  },
+                  uninterpretedOption: {
+                    rule: "repeated",
+                    type: "UninterpretedOption",
+                    id: 999
+                  }
+                },
+                extensions: [
+                  [
+                    1e3,
+                    536870911
+                  ]
+                ],
+                reserved: [
+                  [
+                    4,
+                    4
+                  ]
+                ],
+                nested: {
+                  CType: {
+                    values: {
+                      STRING: 0,
+                      CORD: 1,
+                      STRING_PIECE: 2
+                    }
+                  },
+                  JSType: {
+                    values: {
+                      JS_NORMAL: 0,
+                      JS_STRING: 1,
+                      JS_NUMBER: 2
+                    }
+                  }
+                }
+              },
+              OneofOptions: {
+                fields: {
+                  uninterpretedOption: {
+                    rule: "repeated",
+                    type: "UninterpretedOption",
+                    id: 999
+                  }
+                },
+                extensions: [
+                  [
+                    1e3,
+                    536870911
+                  ]
+                ]
+              },
+              EnumOptions: {
+                fields: {
+                  allowAlias: {
+                    type: "bool",
+                    id: 2
+                  },
+                  deprecated: {
+                    type: "bool",
+                    id: 3
+                  },
+                  uninterpretedOption: {
+                    rule: "repeated",
+                    type: "UninterpretedOption",
+                    id: 999
+                  }
+                },
+                extensions: [
+                  [
+                    1e3,
+                    536870911
+                  ]
+                ]
+              },
+              EnumValueOptions: {
+                fields: {
+                  deprecated: {
+                    type: "bool",
+                    id: 1
+                  },
+                  uninterpretedOption: {
+                    rule: "repeated",
+                    type: "UninterpretedOption",
+                    id: 999
+                  }
+                },
+                extensions: [
+                  [
+                    1e3,
+                    536870911
+                  ]
+                ]
+              },
+              ServiceOptions: {
+                fields: {
+                  deprecated: {
+                    type: "bool",
+                    id: 33
+                  },
+                  uninterpretedOption: {
+                    rule: "repeated",
+                    type: "UninterpretedOption",
+                    id: 999
+                  }
+                },
+                extensions: [
+                  [
+                    1e3,
+                    536870911
+                  ]
+                ]
+              },
+              MethodOptions: {
+                fields: {
+                  deprecated: {
+                    type: "bool",
+                    id: 33
+                  },
+                  uninterpretedOption: {
+                    rule: "repeated",
+                    type: "UninterpretedOption",
+                    id: 999
+                  }
+                },
+                extensions: [
+                  [
+                    1e3,
+                    536870911
+                  ]
+                ]
+              },
+              UninterpretedOption: {
+                fields: {
+                  name: {
+                    rule: "repeated",
+                    type: "NamePart",
+                    id: 2
+                  },
+                  identifierValue: {
+                    type: "string",
+                    id: 3
+                  },
+                  positiveIntValue: {
+                    type: "uint64",
+                    id: 4
+                  },
+                  negativeIntValue: {
+                    type: "int64",
+                    id: 5
+                  },
+                  doubleValue: {
+                    type: "double",
+                    id: 6
+                  },
+                  stringValue: {
+                    type: "bytes",
+                    id: 7
+                  },
+                  aggregateValue: {
+                    type: "string",
+                    id: 8
+                  }
+                },
+                nested: {
+                  NamePart: {
+                    fields: {
+                      namePart: {
+                        rule: "required",
+                        type: "string",
+                        id: 1
+                      },
+                      isExtension: {
+                        rule: "required",
+                        type: "bool",
+                        id: 2
+                      }
+                    }
+                  }
+                }
+              },
+              SourceCodeInfo: {
+                fields: {
+                  location: {
+                    rule: "repeated",
+                    type: "Location",
+                    id: 1
+                  }
+                },
+                nested: {
+                  Location: {
+                    fields: {
+                      path: {
+                        rule: "repeated",
+                        type: "int32",
+                        id: 1
+                      },
+                      span: {
+                        rule: "repeated",
+                        type: "int32",
+                        id: 2
+                      },
+                      leadingComments: {
+                        type: "string",
+                        id: 3
+                      },
+                      trailingComments: {
+                        type: "string",
+                        id: 4
+                      },
+                      leadingDetachedComments: {
+                        rule: "repeated",
+                        type: "string",
+                        id: 6
+                      }
+                    }
+                  }
+                }
+              },
+              GeneratedCodeInfo: {
+                fields: {
+                  annotation: {
+                    rule: "repeated",
+                    type: "Annotation",
+                    id: 1
+                  }
+                },
+                nested: {
+                  Annotation: {
+                    fields: {
+                      path: {
+                        rule: "repeated",
+                        type: "int32",
+                        id: 1
+                      },
+                      sourceFile: {
+                        type: "string",
+                        id: 2
+                      },
+                      begin: {
+                        type: "int32",
+                        id: 3
+                      },
+                      end: {
+                        type: "int32",
+                        id: 4
+                      }
+                    }
+                  }
+                }
+              },
+              Struct: {
+                fields: {
+                  fields: {
+                    keyType: "string",
+                    type: "Value",
+                    id: 1
+                  }
+                }
+              },
+              Value: {
+                oneofs: {
+                  kind: {
+                    oneof: [
+                      "nullValue",
+                      "numberValue",
+                      "stringValue",
+                      "boolValue",
+                      "structValue",
+                      "listValue"
+                    ]
+                  }
+                },
+                fields: {
+                  nullValue: {
+                    type: "NullValue",
+                    id: 1
+                  },
+                  numberValue: {
+                    type: "double",
+                    id: 2
+                  },
+                  stringValue: {
+                    type: "string",
+                    id: 3
+                  },
+                  boolValue: {
+                    type: "bool",
+                    id: 4
+                  },
+                  structValue: {
+                    type: "Struct",
+                    id: 5
+                  },
+                  listValue: {
+                    type: "ListValue",
+                    id: 6
+                  }
+                }
+              },
+              NullValue: {
+                values: {
+                  NULL_VALUE: 0
+                }
+              },
+              ListValue: {
+                fields: {
+                  values: {
+                    rule: "repeated",
+                    type: "Value",
+                    id: 1
+                  }
+                }
+              },
+              Empty: {
+                fields: {}
+              },
+              DoubleValue: {
+                fields: {
+                  value: {
+                    type: "double",
+                    id: 1
+                  }
+                }
+              },
+              FloatValue: {
+                fields: {
+                  value: {
+                    type: "float",
+                    id: 1
+                  }
+                }
+              },
+              Int64Value: {
+                fields: {
+                  value: {
+                    type: "int64",
+                    id: 1
+                  }
+                }
+              },
+              UInt64Value: {
+                fields: {
+                  value: {
+                    type: "uint64",
+                    id: 1
+                  }
+                }
+              },
+              Int32Value: {
+                fields: {
+                  value: {
+                    type: "int32",
+                    id: 1
+                  }
+                }
+              },
+              UInt32Value: {
+                fields: {
+                  value: {
+                    type: "uint32",
+                    id: 1
+                  }
+                }
+              },
+              BoolValue: {
+                fields: {
+                  value: {
+                    type: "bool",
+                    id: 1
+                  }
+                }
+              },
+              StringValue: {
+                fields: {
+                  value: {
+                    type: "string",
+                    id: 1
+                  }
+                }
+              },
+              BytesValue: {
+                fields: {
+                  value: {
+                    type: "bytes",
+                    id: 1
+                  }
+                }
+              },
+              Any: {
+                fields: {
+                  typeUrl: {
+                    type: "string",
+                    id: 1
+                  },
+                  value: {
+                    type: "bytes",
+                    id: 2
+                  }
+                }
+              }
+            }
+          },
+          firestore: {
+            nested: {
+              v1: {
+                options: {
+                  csharp_namespace: "Google.Cloud.Firestore.V1",
+                  go_package: "google.golang.org/genproto/googleapis/firestore/v1;firestore",
+                  java_multiple_files: true,
+                  java_outer_classname: "WriteProto",
+                  java_package: "com.google.firestore.v1",
+                  objc_class_prefix: "GCFS",
+                  php_namespace: "Google\\Cloud\\Firestore\\V1",
+                  ruby_package: "Google::Cloud::Firestore::V1"
+                },
+                nested: {
+                  AggregationResult: {
+                    fields: {
+                      aggregateFields: {
+                        keyType: "string",
+                        type: "Value",
+                        id: 2
+                      }
+                    }
+                  },
+                  BitSequence: {
+                    fields: {
+                      bitmap: {
+                        type: "bytes",
+                        id: 1
+                      },
+                      padding: {
+                        type: "int32",
+                        id: 2
+                      }
+                    }
+                  },
+                  BloomFilter: {
+                    fields: {
+                      bits: {
+                        type: "BitSequence",
+                        id: 1
+                      },
+                      hashCount: {
+                        type: "int32",
+                        id: 2
+                      }
+                    }
+                  },
+                  DocumentMask: {
+                    fields: {
+                      fieldPaths: {
+                        rule: "repeated",
+                        type: "string",
+                        id: 1
+                      }
+                    }
+                  },
+                  Precondition: {
+                    oneofs: {
+                      conditionType: {
+                        oneof: [
+                          "exists",
+                          "updateTime"
+                        ]
+                      }
+                    },
+                    fields: {
+                      exists: {
+                        type: "bool",
+                        id: 1
+                      },
+                      updateTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 2
+                      }
+                    }
+                  },
+                  TransactionOptions: {
+                    oneofs: {
+                      mode: {
+                        oneof: [
+                          "readOnly",
+                          "readWrite"
+                        ]
+                      }
+                    },
+                    fields: {
+                      readOnly: {
+                        type: "ReadOnly",
+                        id: 2
+                      },
+                      readWrite: {
+                        type: "ReadWrite",
+                        id: 3
+                      }
+                    },
+                    nested: {
+                      ReadWrite: {
+                        fields: {
+                          retryTransaction: {
+                            type: "bytes",
+                            id: 1
+                          }
+                        }
+                      },
+                      ReadOnly: {
+                        oneofs: {
+                          consistencySelector: {
+                            oneof: [
+                              "readTime"
+                            ]
+                          }
+                        },
+                        fields: {
+                          readTime: {
+                            type: "google.protobuf.Timestamp",
+                            id: 2
+                          }
+                        }
+                      }
+                    }
+                  },
+                  Document: {
+                    fields: {
+                      name: {
+                        type: "string",
+                        id: 1
+                      },
+                      fields: {
+                        keyType: "string",
+                        type: "Value",
+                        id: 2
+                      },
+                      createTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 3
+                      },
+                      updateTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 4
+                      }
+                    }
+                  },
+                  Value: {
+                    oneofs: {
+                      valueType: {
+                        oneof: [
+                          "nullValue",
+                          "booleanValue",
+                          "integerValue",
+                          "doubleValue",
+                          "timestampValue",
+                          "stringValue",
+                          "bytesValue",
+                          "referenceValue",
+                          "geoPointValue",
+                          "arrayValue",
+                          "mapValue"
+                        ]
+                      }
+                    },
+                    fields: {
+                      nullValue: {
+                        type: "google.protobuf.NullValue",
+                        id: 11
+                      },
+                      booleanValue: {
+                        type: "bool",
+                        id: 1
+                      },
+                      integerValue: {
+                        type: "int64",
+                        id: 2
+                      },
+                      doubleValue: {
+                        type: "double",
+                        id: 3
+                      },
+                      timestampValue: {
+                        type: "google.protobuf.Timestamp",
+                        id: 10
+                      },
+                      stringValue: {
+                        type: "string",
+                        id: 17
+                      },
+                      bytesValue: {
+                        type: "bytes",
+                        id: 18
+                      },
+                      referenceValue: {
+                        type: "string",
+                        id: 5
+                      },
+                      geoPointValue: {
+                        type: "google.type.LatLng",
+                        id: 8
+                      },
+                      arrayValue: {
+                        type: "ArrayValue",
+                        id: 9
+                      },
+                      mapValue: {
+                        type: "MapValue",
+                        id: 6
+                      }
+                    }
+                  },
+                  ArrayValue: {
+                    fields: {
+                      values: {
+                        rule: "repeated",
+                        type: "Value",
+                        id: 1
+                      }
+                    }
+                  },
+                  MapValue: {
+                    fields: {
+                      fields: {
+                        keyType: "string",
+                        type: "Value",
+                        id: 1
+                      }
+                    }
+                  },
+                  Firestore: {
+                    options: {
+                      "(google.api.default_host)": "firestore.googleapis.com",
+                      "(google.api.oauth_scopes)": "https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/datastore"
+                    },
+                    methods: {
+                      GetDocument: {
+                        requestType: "GetDocumentRequest",
+                        responseType: "Document",
+                        options: {
+                          "(google.api.http).get": "/v1/{name=projects/*/databases/*/documents/*/**}"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              get: "/v1/{name=projects/*/databases/*/documents/*/**}"
+                            }
+                          }
+                        ]
+                      },
+                      ListDocuments: {
+                        requestType: "ListDocumentsRequest",
+                        responseType: "ListDocumentsResponse",
+                        options: {
+                          "(google.api.http).get": "/v1/{parent=projects/*/databases/*/documents/*/**}/{collection_id}"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              get: "/v1/{parent=projects/*/databases/*/documents/*/**}/{collection_id}"
+                            }
+                          }
+                        ]
+                      },
+                      UpdateDocument: {
+                        requestType: "UpdateDocumentRequest",
+                        responseType: "Document",
+                        options: {
+                          "(google.api.http).patch": "/v1/{document.name=projects/*/databases/*/documents/*/**}",
+                          "(google.api.http).body": "document",
+                          "(google.api.method_signature)": "document,update_mask"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              patch: "/v1/{document.name=projects/*/databases/*/documents/*/**}",
+                              body: "document"
+                            }
+                          },
+                          {
+                            "(google.api.method_signature)": "document,update_mask"
+                          }
+                        ]
+                      },
+                      DeleteDocument: {
+                        requestType: "DeleteDocumentRequest",
+                        responseType: "google.protobuf.Empty",
+                        options: {
+                          "(google.api.http).delete": "/v1/{name=projects/*/databases/*/documents/*/**}",
+                          "(google.api.method_signature)": "name"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              "delete": "/v1/{name=projects/*/databases/*/documents/*/**}"
+                            }
+                          },
+                          {
+                            "(google.api.method_signature)": "name"
+                          }
+                        ]
+                      },
+                      BatchGetDocuments: {
+                        requestType: "BatchGetDocumentsRequest",
+                        responseType: "BatchGetDocumentsResponse",
+                        responseStream: true,
+                        options: {
+                          "(google.api.http).post": "/v1/{database=projects/*/databases/*}/documents:batchGet",
+                          "(google.api.http).body": "*"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              post: "/v1/{database=projects/*/databases/*}/documents:batchGet",
+                              body: "*"
+                            }
+                          }
+                        ]
+                      },
+                      BeginTransaction: {
+                        requestType: "BeginTransactionRequest",
+                        responseType: "BeginTransactionResponse",
+                        options: {
+                          "(google.api.http).post": "/v1/{database=projects/*/databases/*}/documents:beginTransaction",
+                          "(google.api.http).body": "*",
+                          "(google.api.method_signature)": "database"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              post: "/v1/{database=projects/*/databases/*}/documents:beginTransaction",
+                              body: "*"
+                            }
+                          },
+                          {
+                            "(google.api.method_signature)": "database"
+                          }
+                        ]
+                      },
+                      Commit: {
+                        requestType: "CommitRequest",
+                        responseType: "CommitResponse",
+                        options: {
+                          "(google.api.http).post": "/v1/{database=projects/*/databases/*}/documents:commit",
+                          "(google.api.http).body": "*",
+                          "(google.api.method_signature)": "database,writes"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              post: "/v1/{database=projects/*/databases/*}/documents:commit",
+                              body: "*"
+                            }
+                          },
+                          {
+                            "(google.api.method_signature)": "database,writes"
+                          }
+                        ]
+                      },
+                      Rollback: {
+                        requestType: "RollbackRequest",
+                        responseType: "google.protobuf.Empty",
+                        options: {
+                          "(google.api.http).post": "/v1/{database=projects/*/databases/*}/documents:rollback",
+                          "(google.api.http).body": "*",
+                          "(google.api.method_signature)": "database,transaction"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              post: "/v1/{database=projects/*/databases/*}/documents:rollback",
+                              body: "*"
+                            }
+                          },
+                          {
+                            "(google.api.method_signature)": "database,transaction"
+                          }
+                        ]
+                      },
+                      RunQuery: {
+                        requestType: "RunQueryRequest",
+                        responseType: "RunQueryResponse",
+                        responseStream: true,
+                        options: {
+                          "(google.api.http).post": "/v1/{parent=projects/*/databases/*/documents}:runQuery",
+                          "(google.api.http).body": "*",
+                          "(google.api.http).additional_bindings.post": "/v1/{parent=projects/*/databases/*/documents/*/**}:runQuery",
+                          "(google.api.http).additional_bindings.body": "*"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              post: "/v1/{parent=projects/*/databases/*/documents}:runQuery",
+                              body: "*",
+                              additional_bindings: {
+                                post: "/v1/{parent=projects/*/databases/*/documents/*/**}:runQuery",
+                                body: "*"
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      RunAggregationQuery: {
+                        requestType: "RunAggregationQueryRequest",
+                        responseType: "RunAggregationQueryResponse",
+                        responseStream: true,
+                        options: {
+                          "(google.api.http).post": "/v1/{parent=projects/*/databases/*/documents}:runAggregationQuery",
+                          "(google.api.http).body": "*",
+                          "(google.api.http).additional_bindings.post": "/v1/{parent=projects/*/databases/*/documents/*/**}:runAggregationQuery",
+                          "(google.api.http).additional_bindings.body": "*"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              post: "/v1/{parent=projects/*/databases/*/documents}:runAggregationQuery",
+                              body: "*",
+                              additional_bindings: {
+                                post: "/v1/{parent=projects/*/databases/*/documents/*/**}:runAggregationQuery",
+                                body: "*"
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      PartitionQuery: {
+                        requestType: "PartitionQueryRequest",
+                        responseType: "PartitionQueryResponse",
+                        options: {
+                          "(google.api.http).post": "/v1/{parent=projects/*/databases/*/documents}:partitionQuery",
+                          "(google.api.http).body": "*",
+                          "(google.api.http).additional_bindings.post": "/v1/{parent=projects/*/databases/*/documents/*/**}:partitionQuery",
+                          "(google.api.http).additional_bindings.body": "*"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              post: "/v1/{parent=projects/*/databases/*/documents}:partitionQuery",
+                              body: "*",
+                              additional_bindings: {
+                                post: "/v1/{parent=projects/*/databases/*/documents/*/**}:partitionQuery",
+                                body: "*"
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      Write: {
+                        requestType: "WriteRequest",
+                        requestStream: true,
+                        responseType: "WriteResponse",
+                        responseStream: true,
+                        options: {
+                          "(google.api.http).post": "/v1/{database=projects/*/databases/*}/documents:write",
+                          "(google.api.http).body": "*"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              post: "/v1/{database=projects/*/databases/*}/documents:write",
+                              body: "*"
+                            }
+                          }
+                        ]
+                      },
+                      Listen: {
+                        requestType: "ListenRequest",
+                        requestStream: true,
+                        responseType: "ListenResponse",
+                        responseStream: true,
+                        options: {
+                          "(google.api.http).post": "/v1/{database=projects/*/databases/*}/documents:listen",
+                          "(google.api.http).body": "*"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              post: "/v1/{database=projects/*/databases/*}/documents:listen",
+                              body: "*"
+                            }
+                          }
+                        ]
+                      },
+                      ListCollectionIds: {
+                        requestType: "ListCollectionIdsRequest",
+                        responseType: "ListCollectionIdsResponse",
+                        options: {
+                          "(google.api.http).post": "/v1/{parent=projects/*/databases/*/documents}:listCollectionIds",
+                          "(google.api.http).body": "*",
+                          "(google.api.http).additional_bindings.post": "/v1/{parent=projects/*/databases/*/documents/*/**}:listCollectionIds",
+                          "(google.api.http).additional_bindings.body": "*",
+                          "(google.api.method_signature)": "parent"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              post: "/v1/{parent=projects/*/databases/*/documents}:listCollectionIds",
+                              body: "*",
+                              additional_bindings: {
+                                post: "/v1/{parent=projects/*/databases/*/documents/*/**}:listCollectionIds",
+                                body: "*"
+                              }
+                            }
+                          },
+                          {
+                            "(google.api.method_signature)": "parent"
+                          }
+                        ]
+                      },
+                      BatchWrite: {
+                        requestType: "BatchWriteRequest",
+                        responseType: "BatchWriteResponse",
+                        options: {
+                          "(google.api.http).post": "/v1/{database=projects/*/databases/*}/documents:batchWrite",
+                          "(google.api.http).body": "*"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              post: "/v1/{database=projects/*/databases/*}/documents:batchWrite",
+                              body: "*"
+                            }
+                          }
+                        ]
+                      },
+                      CreateDocument: {
+                        requestType: "CreateDocumentRequest",
+                        responseType: "Document",
+                        options: {
+                          "(google.api.http).post": "/v1/{parent=projects/*/databases/*/documents/**}/{collection_id}",
+                          "(google.api.http).body": "document"
+                        },
+                        parsedOptions: [
+                          {
+                            "(google.api.http)": {
+                              post: "/v1/{parent=projects/*/databases/*/documents/**}/{collection_id}",
+                              body: "document"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  GetDocumentRequest: {
+                    oneofs: {
+                      consistencySelector: {
+                        oneof: [
+                          "transaction",
+                          "readTime"
+                        ]
+                      }
+                    },
+                    fields: {
+                      name: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      mask: {
+                        type: "DocumentMask",
+                        id: 2
+                      },
+                      transaction: {
+                        type: "bytes",
+                        id: 3
+                      },
+                      readTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 5
+                      }
+                    }
+                  },
+                  ListDocumentsRequest: {
+                    oneofs: {
+                      consistencySelector: {
+                        oneof: [
+                          "transaction",
+                          "readTime"
+                        ]
+                      }
+                    },
+                    fields: {
+                      parent: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      collectionId: {
+                        type: "string",
+                        id: 2,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      pageSize: {
+                        type: "int32",
+                        id: 3
+                      },
+                      pageToken: {
+                        type: "string",
+                        id: 4
+                      },
+                      orderBy: {
+                        type: "string",
+                        id: 6
+                      },
+                      mask: {
+                        type: "DocumentMask",
+                        id: 7
+                      },
+                      transaction: {
+                        type: "bytes",
+                        id: 8
+                      },
+                      readTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 10
+                      },
+                      showMissing: {
+                        type: "bool",
+                        id: 12
+                      }
+                    }
+                  },
+                  ListDocumentsResponse: {
+                    fields: {
+                      documents: {
+                        rule: "repeated",
+                        type: "Document",
+                        id: 1
+                      },
+                      nextPageToken: {
+                        type: "string",
+                        id: 2
+                      }
+                    }
+                  },
+                  CreateDocumentRequest: {
+                    fields: {
+                      parent: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      collectionId: {
+                        type: "string",
+                        id: 2,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      documentId: {
+                        type: "string",
+                        id: 3
+                      },
+                      document: {
+                        type: "Document",
+                        id: 4,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      mask: {
+                        type: "DocumentMask",
+                        id: 5
+                      }
+                    }
+                  },
+                  UpdateDocumentRequest: {
+                    fields: {
+                      document: {
+                        type: "Document",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      updateMask: {
+                        type: "DocumentMask",
+                        id: 2
+                      },
+                      mask: {
+                        type: "DocumentMask",
+                        id: 3
+                      },
+                      currentDocument: {
+                        type: "Precondition",
+                        id: 4
+                      }
+                    }
+                  },
+                  DeleteDocumentRequest: {
+                    fields: {
+                      name: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      currentDocument: {
+                        type: "Precondition",
+                        id: 2
+                      }
+                    }
+                  },
+                  BatchGetDocumentsRequest: {
+                    oneofs: {
+                      consistencySelector: {
+                        oneof: [
+                          "transaction",
+                          "newTransaction",
+                          "readTime"
+                        ]
+                      }
+                    },
+                    fields: {
+                      database: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      documents: {
+                        rule: "repeated",
+                        type: "string",
+                        id: 2
+                      },
+                      mask: {
+                        type: "DocumentMask",
+                        id: 3
+                      },
+                      transaction: {
+                        type: "bytes",
+                        id: 4
+                      },
+                      newTransaction: {
+                        type: "TransactionOptions",
+                        id: 5
+                      },
+                      readTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 7
+                      }
+                    }
+                  },
+                  BatchGetDocumentsResponse: {
+                    oneofs: {
+                      result: {
+                        oneof: [
+                          "found",
+                          "missing"
+                        ]
+                      }
+                    },
+                    fields: {
+                      found: {
+                        type: "Document",
+                        id: 1
+                      },
+                      missing: {
+                        type: "string",
+                        id: 2
+                      },
+                      transaction: {
+                        type: "bytes",
+                        id: 3
+                      },
+                      readTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 4
+                      }
+                    }
+                  },
+                  BeginTransactionRequest: {
+                    fields: {
+                      database: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      options: {
+                        type: "TransactionOptions",
+                        id: 2
+                      }
+                    }
+                  },
+                  BeginTransactionResponse: {
+                    fields: {
+                      transaction: {
+                        type: "bytes",
+                        id: 1
+                      }
+                    }
+                  },
+                  CommitRequest: {
+                    fields: {
+                      database: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      writes: {
+                        rule: "repeated",
+                        type: "Write",
+                        id: 2
+                      },
+                      transaction: {
+                        type: "bytes",
+                        id: 3
+                      }
+                    }
+                  },
+                  CommitResponse: {
+                    fields: {
+                      writeResults: {
+                        rule: "repeated",
+                        type: "WriteResult",
+                        id: 1
+                      },
+                      commitTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 2
+                      }
+                    }
+                  },
+                  RollbackRequest: {
+                    fields: {
+                      database: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      transaction: {
+                        type: "bytes",
+                        id: 2,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      }
+                    }
+                  },
+                  RunQueryRequest: {
+                    oneofs: {
+                      queryType: {
+                        oneof: [
+                          "structuredQuery"
+                        ]
+                      },
+                      consistencySelector: {
+                        oneof: [
+                          "transaction",
+                          "newTransaction",
+                          "readTime"
+                        ]
+                      }
+                    },
+                    fields: {
+                      parent: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      structuredQuery: {
+                        type: "StructuredQuery",
+                        id: 2
+                      },
+                      transaction: {
+                        type: "bytes",
+                        id: 5
+                      },
+                      newTransaction: {
+                        type: "TransactionOptions",
+                        id: 6
+                      },
+                      readTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 7
+                      }
+                    }
+                  },
+                  RunQueryResponse: {
+                    fields: {
+                      transaction: {
+                        type: "bytes",
+                        id: 2
+                      },
+                      document: {
+                        type: "Document",
+                        id: 1
+                      },
+                      readTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 3
+                      },
+                      skippedResults: {
+                        type: "int32",
+                        id: 4
+                      }
+                    }
+                  },
+                  RunAggregationQueryRequest: {
+                    oneofs: {
+                      queryType: {
+                        oneof: [
+                          "structuredAggregationQuery"
+                        ]
+                      },
+                      consistencySelector: {
+                        oneof: [
+                          "transaction",
+                          "newTransaction",
+                          "readTime"
+                        ]
+                      }
+                    },
+                    fields: {
+                      parent: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      structuredAggregationQuery: {
+                        type: "StructuredAggregationQuery",
+                        id: 2
+                      },
+                      transaction: {
+                        type: "bytes",
+                        id: 4
+                      },
+                      newTransaction: {
+                        type: "TransactionOptions",
+                        id: 5
+                      },
+                      readTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 6
+                      }
+                    }
+                  },
+                  RunAggregationQueryResponse: {
+                    fields: {
+                      result: {
+                        type: "AggregationResult",
+                        id: 1
+                      },
+                      transaction: {
+                        type: "bytes",
+                        id: 2
+                      },
+                      readTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 3
+                      }
+                    }
+                  },
+                  PartitionQueryRequest: {
+                    oneofs: {
+                      queryType: {
+                        oneof: [
+                          "structuredQuery"
+                        ]
+                      }
+                    },
+                    fields: {
+                      parent: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      structuredQuery: {
+                        type: "StructuredQuery",
+                        id: 2
+                      },
+                      partitionCount: {
+                        type: "int64",
+                        id: 3
+                      },
+                      pageToken: {
+                        type: "string",
+                        id: 4
+                      },
+                      pageSize: {
+                        type: "int32",
+                        id: 5
+                      }
+                    }
+                  },
+                  PartitionQueryResponse: {
+                    fields: {
+                      partitions: {
+                        rule: "repeated",
+                        type: "Cursor",
+                        id: 1
+                      },
+                      nextPageToken: {
+                        type: "string",
+                        id: 2
+                      }
+                    }
+                  },
+                  WriteRequest: {
+                    fields: {
+                      database: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      streamId: {
+                        type: "string",
+                        id: 2
+                      },
+                      writes: {
+                        rule: "repeated",
+                        type: "Write",
+                        id: 3
+                      },
+                      streamToken: {
+                        type: "bytes",
+                        id: 4
+                      },
+                      labels: {
+                        keyType: "string",
+                        type: "string",
+                        id: 5
+                      }
+                    }
+                  },
+                  WriteResponse: {
+                    fields: {
+                      streamId: {
+                        type: "string",
+                        id: 1
+                      },
+                      streamToken: {
+                        type: "bytes",
+                        id: 2
+                      },
+                      writeResults: {
+                        rule: "repeated",
+                        type: "WriteResult",
+                        id: 3
+                      },
+                      commitTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 4
+                      }
+                    }
+                  },
+                  ListenRequest: {
+                    oneofs: {
+                      targetChange: {
+                        oneof: [
+                          "addTarget",
+                          "removeTarget"
+                        ]
+                      }
+                    },
+                    fields: {
+                      database: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      addTarget: {
+                        type: "Target",
+                        id: 2
+                      },
+                      removeTarget: {
+                        type: "int32",
+                        id: 3
+                      },
+                      labels: {
+                        keyType: "string",
+                        type: "string",
+                        id: 4
+                      }
+                    }
+                  },
+                  ListenResponse: {
+                    oneofs: {
+                      responseType: {
+                        oneof: [
+                          "targetChange",
+                          "documentChange",
+                          "documentDelete",
+                          "documentRemove",
+                          "filter"
+                        ]
+                      }
+                    },
+                    fields: {
+                      targetChange: {
+                        type: "TargetChange",
+                        id: 2
+                      },
+                      documentChange: {
+                        type: "DocumentChange",
+                        id: 3
+                      },
+                      documentDelete: {
+                        type: "DocumentDelete",
+                        id: 4
+                      },
+                      documentRemove: {
+                        type: "DocumentRemove",
+                        id: 6
+                      },
+                      filter: {
+                        type: "ExistenceFilter",
+                        id: 5
+                      }
+                    }
+                  },
+                  Target: {
+                    oneofs: {
+                      targetType: {
+                        oneof: [
+                          "query",
+                          "documents"
+                        ]
+                      },
+                      resumeType: {
+                        oneof: [
+                          "resumeToken",
+                          "readTime"
+                        ]
+                      }
+                    },
+                    fields: {
+                      query: {
+                        type: "QueryTarget",
+                        id: 2
+                      },
+                      documents: {
+                        type: "DocumentsTarget",
+                        id: 3
+                      },
+                      resumeToken: {
+                        type: "bytes",
+                        id: 4
+                      },
+                      readTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 11
+                      },
+                      targetId: {
+                        type: "int32",
+                        id: 5
+                      },
+                      once: {
+                        type: "bool",
+                        id: 6
+                      },
+                      expectedCount: {
+                        type: "google.protobuf.Int32Value",
+                        id: 12
+                      }
+                    },
+                    nested: {
+                      DocumentsTarget: {
+                        fields: {
+                          documents: {
+                            rule: "repeated",
+                            type: "string",
+                            id: 2
+                          }
+                        }
+                      },
+                      QueryTarget: {
+                        oneofs: {
+                          queryType: {
+                            oneof: [
+                              "structuredQuery"
+                            ]
+                          }
+                        },
+                        fields: {
+                          parent: {
+                            type: "string",
+                            id: 1
+                          },
+                          structuredQuery: {
+                            type: "StructuredQuery",
+                            id: 2
+                          }
+                        }
+                      }
+                    }
+                  },
+                  TargetChange: {
+                    fields: {
+                      targetChangeType: {
+                        type: "TargetChangeType",
+                        id: 1
+                      },
+                      targetIds: {
+                        rule: "repeated",
+                        type: "int32",
+                        id: 2
+                      },
+                      cause: {
+                        type: "google.rpc.Status",
+                        id: 3
+                      },
+                      resumeToken: {
+                        type: "bytes",
+                        id: 4
+                      },
+                      readTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 6
+                      }
+                    },
+                    nested: {
+                      TargetChangeType: {
+                        values: {
+                          NO_CHANGE: 0,
+                          ADD: 1,
+                          REMOVE: 2,
+                          CURRENT: 3,
+                          RESET: 4
+                        }
+                      }
+                    }
+                  },
+                  ListCollectionIdsRequest: {
+                    fields: {
+                      parent: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      pageSize: {
+                        type: "int32",
+                        id: 2
+                      },
+                      pageToken: {
+                        type: "string",
+                        id: 3
+                      }
+                    }
+                  },
+                  ListCollectionIdsResponse: {
+                    fields: {
+                      collectionIds: {
+                        rule: "repeated",
+                        type: "string",
+                        id: 1
+                      },
+                      nextPageToken: {
+                        type: "string",
+                        id: 2
+                      }
+                    }
+                  },
+                  BatchWriteRequest: {
+                    fields: {
+                      database: {
+                        type: "string",
+                        id: 1,
+                        options: {
+                          "(google.api.field_behavior)": "REQUIRED"
+                        }
+                      },
+                      writes: {
+                        rule: "repeated",
+                        type: "Write",
+                        id: 2
+                      },
+                      labels: {
+                        keyType: "string",
+                        type: "string",
+                        id: 3
+                      }
+                    }
+                  },
+                  BatchWriteResponse: {
+                    fields: {
+                      writeResults: {
+                        rule: "repeated",
+                        type: "WriteResult",
+                        id: 1
+                      },
+                      status: {
+                        rule: "repeated",
+                        type: "google.rpc.Status",
+                        id: 2
+                      }
+                    }
+                  },
+                  StructuredQuery: {
+                    fields: {
+                      select: {
+                        type: "Projection",
+                        id: 1
+                      },
+                      from: {
+                        rule: "repeated",
+                        type: "CollectionSelector",
+                        id: 2
+                      },
+                      where: {
+                        type: "Filter",
+                        id: 3
+                      },
+                      orderBy: {
+                        rule: "repeated",
+                        type: "Order",
+                        id: 4
+                      },
+                      startAt: {
+                        type: "Cursor",
+                        id: 7
+                      },
+                      endAt: {
+                        type: "Cursor",
+                        id: 8
+                      },
+                      offset: {
+                        type: "int32",
+                        id: 6
+                      },
+                      limit: {
+                        type: "google.protobuf.Int32Value",
+                        id: 5
+                      }
+                    },
+                    nested: {
+                      CollectionSelector: {
+                        fields: {
+                          collectionId: {
+                            type: "string",
+                            id: 2
+                          },
+                          allDescendants: {
+                            type: "bool",
+                            id: 3
+                          }
+                        }
+                      },
+                      Filter: {
+                        oneofs: {
+                          filterType: {
+                            oneof: [
+                              "compositeFilter",
+                              "fieldFilter",
+                              "unaryFilter"
+                            ]
+                          }
+                        },
+                        fields: {
+                          compositeFilter: {
+                            type: "CompositeFilter",
+                            id: 1
+                          },
+                          fieldFilter: {
+                            type: "FieldFilter",
+                            id: 2
+                          },
+                          unaryFilter: {
+                            type: "UnaryFilter",
+                            id: 3
+                          }
+                        }
+                      },
+                      CompositeFilter: {
+                        fields: {
+                          op: {
+                            type: "Operator",
+                            id: 1
+                          },
+                          filters: {
+                            rule: "repeated",
+                            type: "Filter",
+                            id: 2
+                          }
+                        },
+                        nested: {
+                          Operator: {
+                            values: {
+                              OPERATOR_UNSPECIFIED: 0,
+                              AND: 1,
+                              OR: 2
+                            }
+                          }
+                        }
+                      },
+                      FieldFilter: {
+                        fields: {
+                          field: {
+                            type: "FieldReference",
+                            id: 1
+                          },
+                          op: {
+                            type: "Operator",
+                            id: 2
+                          },
+                          value: {
+                            type: "Value",
+                            id: 3
+                          }
+                        },
+                        nested: {
+                          Operator: {
+                            values: {
+                              OPERATOR_UNSPECIFIED: 0,
+                              LESS_THAN: 1,
+                              LESS_THAN_OR_EQUAL: 2,
+                              GREATER_THAN: 3,
+                              GREATER_THAN_OR_EQUAL: 4,
+                              EQUAL: 5,
+                              NOT_EQUAL: 6,
+                              ARRAY_CONTAINS: 7,
+                              IN: 8,
+                              ARRAY_CONTAINS_ANY: 9,
+                              NOT_IN: 10
+                            }
+                          }
+                        }
+                      },
+                      UnaryFilter: {
+                        oneofs: {
+                          operandType: {
+                            oneof: [
+                              "field"
+                            ]
+                          }
+                        },
+                        fields: {
+                          op: {
+                            type: "Operator",
+                            id: 1
+                          },
+                          field: {
+                            type: "FieldReference",
+                            id: 2
+                          }
+                        },
+                        nested: {
+                          Operator: {
+                            values: {
+                              OPERATOR_UNSPECIFIED: 0,
+                              IS_NAN: 2,
+                              IS_NULL: 3,
+                              IS_NOT_NAN: 4,
+                              IS_NOT_NULL: 5
+                            }
+                          }
+                        }
+                      },
+                      Order: {
+                        fields: {
+                          field: {
+                            type: "FieldReference",
+                            id: 1
+                          },
+                          direction: {
+                            type: "Direction",
+                            id: 2
+                          }
+                        }
+                      },
+                      FieldReference: {
+                        fields: {
+                          fieldPath: {
+                            type: "string",
+                            id: 2
+                          }
+                        }
+                      },
+                      Projection: {
+                        fields: {
+                          fields: {
+                            rule: "repeated",
+                            type: "FieldReference",
+                            id: 2
+                          }
+                        }
+                      },
+                      Direction: {
+                        values: {
+                          DIRECTION_UNSPECIFIED: 0,
+                          ASCENDING: 1,
+                          DESCENDING: 2
+                        }
+                      }
+                    }
+                  },
+                  StructuredAggregationQuery: {
+                    oneofs: {
+                      queryType: {
+                        oneof: [
+                          "structuredQuery"
+                        ]
+                      }
+                    },
+                    fields: {
+                      structuredQuery: {
+                        type: "StructuredQuery",
+                        id: 1
+                      },
+                      aggregations: {
+                        rule: "repeated",
+                        type: "Aggregation",
+                        id: 3
+                      }
+                    },
+                    nested: {
+                      Aggregation: {
+                        oneofs: {
+                          operator: {
+                            oneof: [
+                              "count",
+                              "sum",
+                              "avg"
+                            ]
+                          }
+                        },
+                        fields: {
+                          count: {
+                            type: "Count",
+                            id: 1
+                          },
+                          sum: {
+                            type: "Sum",
+                            id: 2
+                          },
+                          avg: {
+                            type: "Avg",
+                            id: 3
+                          },
+                          alias: {
+                            type: "string",
+                            id: 7
+                          }
+                        },
+                        nested: {
+                          Count: {
+                            fields: {
+                              upTo: {
+                                type: "google.protobuf.Int64Value",
+                                id: 1
+                              }
+                            }
+                          },
+                          Sum: {
+                            fields: {
+                              field: {
+                                type: "FieldReference",
+                                id: 1
+                              }
+                            }
+                          },
+                          Avg: {
+                            fields: {
+                              field: {
+                                type: "FieldReference",
+                                id: 1
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  Cursor: {
+                    fields: {
+                      values: {
+                        rule: "repeated",
+                        type: "Value",
+                        id: 1
+                      },
+                      before: {
+                        type: "bool",
+                        id: 2
+                      }
+                    }
+                  },
+                  Write: {
+                    oneofs: {
+                      operation: {
+                        oneof: [
+                          "update",
+                          "delete",
+                          "verify",
+                          "transform"
+                        ]
+                      }
+                    },
+                    fields: {
+                      update: {
+                        type: "Document",
+                        id: 1
+                      },
+                      "delete": {
+                        type: "string",
+                        id: 2
+                      },
+                      verify: {
+                        type: "string",
+                        id: 5
+                      },
+                      transform: {
+                        type: "DocumentTransform",
+                        id: 6
+                      },
+                      updateMask: {
+                        type: "DocumentMask",
+                        id: 3
+                      },
+                      updateTransforms: {
+                        rule: "repeated",
+                        type: "DocumentTransform.FieldTransform",
+                        id: 7
+                      },
+                      currentDocument: {
+                        type: "Precondition",
+                        id: 4
+                      }
+                    }
+                  },
+                  DocumentTransform: {
+                    fields: {
+                      document: {
+                        type: "string",
+                        id: 1
+                      },
+                      fieldTransforms: {
+                        rule: "repeated",
+                        type: "FieldTransform",
+                        id: 2
+                      }
+                    },
+                    nested: {
+                      FieldTransform: {
+                        oneofs: {
+                          transformType: {
+                            oneof: [
+                              "setToServerValue",
+                              "increment",
+                              "maximum",
+                              "minimum",
+                              "appendMissingElements",
+                              "removeAllFromArray"
+                            ]
+                          }
+                        },
+                        fields: {
+                          fieldPath: {
+                            type: "string",
+                            id: 1
+                          },
+                          setToServerValue: {
+                            type: "ServerValue",
+                            id: 2
+                          },
+                          increment: {
+                            type: "Value",
+                            id: 3
+                          },
+                          maximum: {
+                            type: "Value",
+                            id: 4
+                          },
+                          minimum: {
+                            type: "Value",
+                            id: 5
+                          },
+                          appendMissingElements: {
+                            type: "ArrayValue",
+                            id: 6
+                          },
+                          removeAllFromArray: {
+                            type: "ArrayValue",
+                            id: 7
+                          }
+                        },
+                        nested: {
+                          ServerValue: {
+                            values: {
+                              SERVER_VALUE_UNSPECIFIED: 0,
+                              REQUEST_TIME: 1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  WriteResult: {
+                    fields: {
+                      updateTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 1
+                      },
+                      transformResults: {
+                        rule: "repeated",
+                        type: "Value",
+                        id: 2
+                      }
+                    }
+                  },
+                  DocumentChange: {
+                    fields: {
+                      document: {
+                        type: "Document",
+                        id: 1
+                      },
+                      targetIds: {
+                        rule: "repeated",
+                        type: "int32",
+                        id: 5
+                      },
+                      removedTargetIds: {
+                        rule: "repeated",
+                        type: "int32",
+                        id: 6
+                      }
+                    }
+                  },
+                  DocumentDelete: {
+                    fields: {
+                      document: {
+                        type: "string",
+                        id: 1
+                      },
+                      removedTargetIds: {
+                        rule: "repeated",
+                        type: "int32",
+                        id: 6
+                      },
+                      readTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 4
+                      }
+                    }
+                  },
+                  DocumentRemove: {
+                    fields: {
+                      document: {
+                        type: "string",
+                        id: 1
+                      },
+                      removedTargetIds: {
+                        rule: "repeated",
+                        type: "int32",
+                        id: 2
+                      },
+                      readTime: {
+                        type: "google.protobuf.Timestamp",
+                        id: 4
+                      }
+                    }
+                  },
+                  ExistenceFilter: {
+                    fields: {
+                      targetId: {
+                        type: "int32",
+                        id: 1
+                      },
+                      count: {
+                        type: "int32",
+                        id: 2
+                      },
+                      unchangedNames: {
+                        type: "BloomFilter",
+                        id: 3
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          api: {
+            options: {
+              go_package: "google.golang.org/genproto/googleapis/api/annotations;annotations",
+              java_multiple_files: true,
+              java_outer_classname: "HttpProto",
+              java_package: "com.google.api",
+              objc_class_prefix: "GAPI",
+              cc_enable_arenas: true
+            },
+            nested: {
+              http: {
+                type: "HttpRule",
+                id: 72295728,
+                extend: "google.protobuf.MethodOptions"
+              },
+              Http: {
+                fields: {
+                  rules: {
+                    rule: "repeated",
+                    type: "HttpRule",
+                    id: 1
+                  }
+                }
+              },
+              HttpRule: {
+                oneofs: {
+                  pattern: {
+                    oneof: [
+                      "get",
+                      "put",
+                      "post",
+                      "delete",
+                      "patch",
+                      "custom"
+                    ]
+                  }
+                },
+                fields: {
+                  get: {
+                    type: "string",
+                    id: 2
+                  },
+                  put: {
+                    type: "string",
+                    id: 3
+                  },
+                  post: {
+                    type: "string",
+                    id: 4
+                  },
+                  "delete": {
+                    type: "string",
+                    id: 5
+                  },
+                  patch: {
+                    type: "string",
+                    id: 6
+                  },
+                  custom: {
+                    type: "CustomHttpPattern",
+                    id: 8
+                  },
+                  selector: {
+                    type: "string",
+                    id: 1
+                  },
+                  body: {
+                    type: "string",
+                    id: 7
+                  },
+                  additionalBindings: {
+                    rule: "repeated",
+                    type: "HttpRule",
+                    id: 11
+                  }
+                }
+              },
+              CustomHttpPattern: {
+                fields: {
+                  kind: {
+                    type: "string",
+                    id: 1
+                  },
+                  path: {
+                    type: "string",
+                    id: 2
+                  }
+                }
+              },
+              methodSignature: {
+                rule: "repeated",
+                type: "string",
+                id: 1051,
+                extend: "google.protobuf.MethodOptions"
+              },
+              defaultHost: {
+                type: "string",
+                id: 1049,
+                extend: "google.protobuf.ServiceOptions"
+              },
+              oauthScopes: {
+                type: "string",
+                id: 1050,
+                extend: "google.protobuf.ServiceOptions"
+              },
+              fieldBehavior: {
+                rule: "repeated",
+                type: "google.api.FieldBehavior",
+                id: 1052,
+                extend: "google.protobuf.FieldOptions"
+              },
+              FieldBehavior: {
+                values: {
+                  FIELD_BEHAVIOR_UNSPECIFIED: 0,
+                  OPTIONAL: 1,
+                  REQUIRED: 2,
+                  OUTPUT_ONLY: 3,
+                  INPUT_ONLY: 4,
+                  IMMUTABLE: 5,
+                  UNORDERED_LIST: 6,
+                  NON_EMPTY_DEFAULT: 7
+                }
+              }
+            }
+          },
+          type: {
+            options: {
+              cc_enable_arenas: true,
+              go_package: "google.golang.org/genproto/googleapis/type/latlng;latlng",
+              java_multiple_files: true,
+              java_outer_classname: "LatLngProto",
+              java_package: "com.google.type",
+              objc_class_prefix: "GTP"
+            },
+            nested: {
+              LatLng: {
+                fields: {
+                  latitude: {
+                    type: "double",
+                    id: 1
+                  },
+                  longitude: {
+                    type: "double",
+                    id: 2
+                  }
+                }
+              }
+            }
+          },
+          rpc: {
+            options: {
+              cc_enable_arenas: true,
+              go_package: "google.golang.org/genproto/googleapis/rpc/status;status",
+              java_multiple_files: true,
+              java_outer_classname: "StatusProto",
+              java_package: "com.google.rpc",
+              objc_class_prefix: "RPC"
+            },
+            nested: {
+              Status: {
+                fields: {
+                  code: {
+                    type: "int32",
+                    id: 1
+                  },
+                  message: {
+                    type: "string",
+                    id: 2
+                  },
+                  details: {
+                    rule: "repeated",
+                    type: "google.protobuf.Any",
+                    id: 3
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+    protos = {
+      nested
+    };
+    protos$1 = /* @__PURE__ */ Object.freeze({
+      __proto__: null,
+      nested,
+      "default": protos
+    });
+    protoLoaderOptions = {
+      longs: String,
+      enums: String,
+      defaults: true,
+      oneofs: false
+    };
     LOG_TAG$8 = "ExponentialBackoff";
     DEFAULT_BACKOFF_INITIAL_DELAY_MS = 1e3;
     DEFAULT_BACKOFF_FACTOR = 1.5;
@@ -47593,9 +57321,465 @@ var init_index_node = __esm({
         return (Math.random() - 0.5) * this.currentBaseMs;
       }
     };
+    LOG_TAG$7 = "PersistentStream";
     IDLE_TIMEOUT_MS = 60 * 1e3;
     HEALTHY_TIMEOUT_MS = 10 * 1e3;
+    PersistentStream = class {
+      constructor(queue, connectionTimerId, idleTimerId, healthTimerId, connection, authCredentialsProvider, appCheckCredentialsProvider, listener) {
+        this.queue = queue;
+        this.idleTimerId = idleTimerId;
+        this.healthTimerId = healthTimerId;
+        this.connection = connection;
+        this.authCredentialsProvider = authCredentialsProvider;
+        this.appCheckCredentialsProvider = appCheckCredentialsProvider;
+        this.listener = listener;
+        this.state = 0;
+        this.closeCount = 0;
+        this.idleTimer = null;
+        this.healthCheck = null;
+        this.stream = null;
+        this.backoff = new ExponentialBackoff(queue, connectionTimerId);
+      }
+      /**
+       * Returns true if start() has been called and no error has occurred. True
+       * indicates the stream is open or in the process of opening (which
+       * encompasses respecting backoff, getting auth tokens, and starting the
+       * actual RPC). Use isOpen() to determine if the stream is open and ready for
+       * outbound requests.
+       */
+      isStarted() {
+        return this.state === 1 || this.state === 5 || this.isOpen();
+      }
+      /**
+       * Returns true if the underlying RPC is open (the onOpen() listener has been
+       * called) and the stream is ready for outbound requests.
+       */
+      isOpen() {
+        return this.state === 2 || this.state === 3;
+      }
+      /**
+       * Starts the RPC. Only allowed if isStarted() returns false. The stream is
+       * not immediately ready for use: onOpen() will be invoked when the RPC is
+       * ready for outbound requests, at which point isOpen() will return true.
+       *
+       * When start returns, isStarted() will return true.
+       */
+      start() {
+        if (this.state === 4) {
+          this.performBackoff();
+          return;
+        }
+        this.auth();
+      }
+      /**
+       * Stops the RPC. This call is idempotent and allowed regardless of the
+       * current isStarted() state.
+       *
+       * When stop returns, isStarted() and isOpen() will both return false.
+       */
+      async stop() {
+        if (this.isStarted()) {
+          await this.close(
+            0
+            /* PersistentStreamState.Initial */
+          );
+        }
+      }
+      /**
+       * After an error the stream will usually back off on the next attempt to
+       * start it. If the error warrants an immediate restart of the stream, the
+       * sender can use this to indicate that the receiver should not back off.
+       *
+       * Each error will call the onClose() listener. That function can decide to
+       * inhibit backoff if required.
+       */
+      inhibitBackoff() {
+        this.state = 0;
+        this.backoff.reset();
+      }
+      /**
+       * Marks this stream as idle. If no further actions are performed on the
+       * stream for one minute, the stream will automatically close itself and
+       * notify the stream's onClose() handler with Status.OK. The stream will then
+       * be in a !isStarted() state, requiring the caller to start the stream again
+       * before further use.
+       *
+       * Only streams that are in state 'Open' can be marked idle, as all other
+       * states imply pending network operations.
+       */
+      markIdle() {
+        if (this.isOpen() && this.idleTimer === null) {
+          this.idleTimer = this.queue.enqueueAfterDelay(this.idleTimerId, IDLE_TIMEOUT_MS, () => this.handleIdleCloseTimer());
+        }
+      }
+      /** Sends a message to the underlying stream. */
+      sendRequest(msg) {
+        this.cancelIdleCheck();
+        this.stream.send(msg);
+      }
+      /** Called by the idle timer when the stream should close due to inactivity. */
+      async handleIdleCloseTimer() {
+        if (this.isOpen()) {
+          return this.close(
+            0
+            /* PersistentStreamState.Initial */
+          );
+        }
+      }
+      /** Marks the stream as active again. */
+      cancelIdleCheck() {
+        if (this.idleTimer) {
+          this.idleTimer.cancel();
+          this.idleTimer = null;
+        }
+      }
+      /** Cancels the health check delayed operation. */
+      cancelHealthCheck() {
+        if (this.healthCheck) {
+          this.healthCheck.cancel();
+          this.healthCheck = null;
+        }
+      }
+      /**
+       * Closes the stream and cleans up as necessary:
+       *
+       * * closes the underlying GRPC stream;
+       * * calls the onClose handler with the given 'error';
+       * * sets internal stream state to 'finalState';
+       * * adjusts the backoff timer based on the error
+       *
+       * A new stream can be opened by calling start().
+       *
+       * @param finalState - the intended state of the stream after closing.
+       * @param error - the error the connection was closed with.
+       */
+      async close(finalState, error2) {
+        this.cancelIdleCheck();
+        this.cancelHealthCheck();
+        this.backoff.cancel();
+        this.closeCount++;
+        if (finalState !== 4) {
+          this.backoff.reset();
+        } else if (error2 && error2.code === Code.RESOURCE_EXHAUSTED) {
+          logError(error2.toString());
+          logError("Using maximum backoff delay to prevent overloading the backend.");
+          this.backoff.resetToMax();
+        } else if (error2 && error2.code === Code.UNAUTHENTICATED && this.state !== 3) {
+          this.authCredentialsProvider.invalidateToken();
+          this.appCheckCredentialsProvider.invalidateToken();
+        }
+        if (this.stream !== null) {
+          this.tearDown();
+          this.stream.close();
+          this.stream = null;
+        }
+        this.state = finalState;
+        await this.listener.onClose(error2);
+      }
+      /**
+       * Can be overridden to perform additional cleanup before the stream is closed.
+       * Calling super.tearDown() is not required.
+       */
+      tearDown() {
+      }
+      auth() {
+        this.state = 1;
+        const dispatchIfNotClosed = this.getCloseGuardedDispatcher(this.closeCount);
+        const closeCount = this.closeCount;
+        Promise.all([
+          this.authCredentialsProvider.getToken(),
+          this.appCheckCredentialsProvider.getToken()
+        ]).then(([authToken, appCheckToken]) => {
+          if (this.closeCount === closeCount) {
+            this.startStream(authToken, appCheckToken);
+          }
+        }, (error2) => {
+          dispatchIfNotClosed(() => {
+            const rpcError = new FirestoreError(Code.UNKNOWN, "Fetching auth token failed: " + error2.message);
+            return this.handleStreamClose(rpcError);
+          });
+        });
+      }
+      startStream(authToken, appCheckToken) {
+        const dispatchIfNotClosed = this.getCloseGuardedDispatcher(this.closeCount);
+        this.stream = this.startRpc(authToken, appCheckToken);
+        this.stream.onOpen(() => {
+          dispatchIfNotClosed(() => {
+            this.state = 2;
+            this.healthCheck = this.queue.enqueueAfterDelay(this.healthTimerId, HEALTHY_TIMEOUT_MS, () => {
+              if (this.isOpen()) {
+                this.state = 3;
+              }
+              return Promise.resolve();
+            });
+            return this.listener.onOpen();
+          });
+        });
+        this.stream.onClose((error2) => {
+          dispatchIfNotClosed(() => {
+            return this.handleStreamClose(error2);
+          });
+        });
+        this.stream.onMessage((msg) => {
+          dispatchIfNotClosed(() => {
+            return this.onMessage(msg);
+          });
+        });
+      }
+      performBackoff() {
+        this.state = 5;
+        this.backoff.backoffAndRun(async () => {
+          this.state = 0;
+          this.start();
+        });
+      }
+      // Visible for tests
+      handleStreamClose(error2) {
+        logDebug(LOG_TAG$7, `close with error: ${error2}`);
+        this.stream = null;
+        return this.close(4, error2);
+      }
+      /**
+       * Returns a "dispatcher" function that dispatches operations onto the
+       * AsyncQueue but only runs them if closeCount remains unchanged. This allows
+       * us to turn auth / stream callbacks into no-ops if the stream is closed /
+       * re-opened, etc.
+       */
+      getCloseGuardedDispatcher(startCloseCount) {
+        return (fn) => {
+          this.queue.enqueueAndForget(() => {
+            if (this.closeCount === startCloseCount) {
+              return fn();
+            } else {
+              logDebug(LOG_TAG$7, "stream callback skipped by getCloseGuardedDispatcher.");
+              return Promise.resolve();
+            }
+          });
+        };
+      }
+    };
+    PersistentListenStream = class extends PersistentStream {
+      constructor(queue, connection, authCredentials, appCheckCredentials, serializer, listener) {
+        super(queue, "listen_stream_connection_backoff", "listen_stream_idle", "health_check_timeout", connection, authCredentials, appCheckCredentials, listener);
+        this.serializer = serializer;
+      }
+      startRpc(authToken, appCheckToken) {
+        return this.connection.openStream("Listen", authToken, appCheckToken);
+      }
+      onMessage(watchChangeProto) {
+        this.backoff.reset();
+        const watchChange = fromWatchChange(this.serializer, watchChangeProto);
+        const snapshot = versionFromListenResponse(watchChangeProto);
+        return this.listener.onWatchChange(watchChange, snapshot);
+      }
+      /**
+       * Registers interest in the results of the given target. If the target
+       * includes a resumeToken it will be included in the request. Results that
+       * affect the target will be streamed back as WatchChange messages that
+       * reference the targetId.
+       */
+      watch(targetData) {
+        const request = {};
+        request.database = getEncodedDatabaseId(this.serializer);
+        request.addTarget = toTarget(this.serializer, targetData);
+        const labels = toListenRequestLabels(this.serializer, targetData);
+        if (labels) {
+          request.labels = labels;
+        }
+        this.sendRequest(request);
+      }
+      /**
+       * Unregisters interest in the results of the target associated with the
+       * given targetId.
+       */
+      unwatch(targetId) {
+        const request = {};
+        request.database = getEncodedDatabaseId(this.serializer);
+        request.removeTarget = targetId;
+        this.sendRequest(request);
+      }
+    };
+    Datastore = class {
+    };
+    DatastoreImpl = class extends Datastore {
+      constructor(authCredentials, appCheckCredentials, connection, serializer) {
+        super();
+        this.authCredentials = authCredentials;
+        this.appCheckCredentials = appCheckCredentials;
+        this.connection = connection;
+        this.serializer = serializer;
+        this.terminated = false;
+      }
+      verifyInitialized() {
+        if (this.terminated) {
+          throw new FirestoreError(Code.FAILED_PRECONDITION, "The client has already been terminated.");
+        }
+      }
+      /** Invokes the provided RPC with auth and AppCheck tokens. */
+      invokeRPC(rpcName, path, request) {
+        this.verifyInitialized();
+        return Promise.all([
+          this.authCredentials.getToken(),
+          this.appCheckCredentials.getToken()
+        ]).then(([authToken, appCheckToken]) => {
+          return this.connection.invokeRPC(rpcName, path, request, authToken, appCheckToken);
+        }).catch((error2) => {
+          if (error2.name === "FirebaseError") {
+            if (error2.code === Code.UNAUTHENTICATED) {
+              this.authCredentials.invalidateToken();
+              this.appCheckCredentials.invalidateToken();
+            }
+            throw error2;
+          } else {
+            throw new FirestoreError(Code.UNKNOWN, error2.toString());
+          }
+        });
+      }
+      /** Invokes the provided RPC with streamed results with auth and AppCheck tokens. */
+      invokeStreamingRPC(rpcName, path, request, expectedResponseCount) {
+        this.verifyInitialized();
+        return Promise.all([
+          this.authCredentials.getToken(),
+          this.appCheckCredentials.getToken()
+        ]).then(([authToken, appCheckToken]) => {
+          return this.connection.invokeStreamingRPC(rpcName, path, request, authToken, appCheckToken, expectedResponseCount);
+        }).catch((error2) => {
+          if (error2.name === "FirebaseError") {
+            if (error2.code === Code.UNAUTHENTICATED) {
+              this.authCredentials.invalidateToken();
+              this.appCheckCredentials.invalidateToken();
+            }
+            throw error2;
+          } else {
+            throw new FirestoreError(Code.UNKNOWN, error2.toString());
+          }
+        });
+      }
+      terminate() {
+        this.terminated = true;
+      }
+    };
+    LOG_TAG$6 = "OnlineStateTracker";
+    MAX_WATCH_STREAM_FAILURES = 1;
     ONLINE_STATE_TIMEOUT_MS = 10 * 1e3;
+    OnlineStateTracker = class {
+      constructor(asyncQueue, onlineStateHandler) {
+        this.asyncQueue = asyncQueue;
+        this.onlineStateHandler = onlineStateHandler;
+        this.state = "Unknown";
+        this.watchStreamFailures = 0;
+        this.onlineStateTimer = null;
+        this.shouldWarnClientIsOffline = true;
+      }
+      /**
+       * Called by RemoteStore when a watch stream is started (including on each
+       * backoff attempt).
+       *
+       * If this is the first attempt, it sets the OnlineState to Unknown and starts
+       * the onlineStateTimer.
+       */
+      handleWatchStreamStart() {
+        if (this.watchStreamFailures === 0) {
+          this.setAndBroadcast(
+            "Unknown"
+            /* OnlineState.Unknown */
+          );
+          this.onlineStateTimer = this.asyncQueue.enqueueAfterDelay("online_state_timeout", ONLINE_STATE_TIMEOUT_MS, () => {
+            this.onlineStateTimer = null;
+            this.logClientOfflineWarningIfNecessary(`Backend didn't respond within ${ONLINE_STATE_TIMEOUT_MS / 1e3} seconds.`);
+            this.setAndBroadcast(
+              "Offline"
+              /* OnlineState.Offline */
+            );
+            return Promise.resolve();
+          });
+        }
+      }
+      /**
+       * Updates our OnlineState as appropriate after the watch stream reports a
+       * failure. The first failure moves us to the 'Unknown' state. We then may
+       * allow multiple failures (based on MAX_WATCH_STREAM_FAILURES) before we
+       * actually transition to the 'Offline' state.
+       */
+      handleWatchStreamFailure(error2) {
+        if (this.state === "Online") {
+          this.setAndBroadcast(
+            "Unknown"
+            /* OnlineState.Unknown */
+          );
+        } else {
+          this.watchStreamFailures++;
+          if (this.watchStreamFailures >= MAX_WATCH_STREAM_FAILURES) {
+            this.clearOnlineStateTimer();
+            this.logClientOfflineWarningIfNecessary(`Connection failed ${MAX_WATCH_STREAM_FAILURES} times. Most recent error: ${error2.toString()}`);
+            this.setAndBroadcast(
+              "Offline"
+              /* OnlineState.Offline */
+            );
+          }
+        }
+      }
+      /**
+       * Explicitly sets the OnlineState to the specified state.
+       *
+       * Note that this resets our timers / failure counters, etc. used by our
+       * Offline heuristics, so must not be used in place of
+       * handleWatchStreamStart() and handleWatchStreamFailure().
+       */
+      set(newState) {
+        this.clearOnlineStateTimer();
+        this.watchStreamFailures = 0;
+        if (newState === "Online") {
+          this.shouldWarnClientIsOffline = false;
+        }
+        this.setAndBroadcast(newState);
+      }
+      setAndBroadcast(newState) {
+        if (newState !== this.state) {
+          this.state = newState;
+          this.onlineStateHandler(newState);
+        }
+      }
+      logClientOfflineWarningIfNecessary(details) {
+        const message = `Could not reach Cloud Firestore backend. ${details}
+This typically indicates that your device does not have a healthy Internet connection at the moment. The client will operate in offline mode until it is able to successfully connect to the backend.`;
+        if (this.shouldWarnClientIsOffline) {
+          logError(message);
+          this.shouldWarnClientIsOffline = false;
+        } else {
+          logDebug(LOG_TAG$6, message);
+        }
+      }
+      clearOnlineStateTimer() {
+        if (this.onlineStateTimer !== null) {
+          this.onlineStateTimer.cancel();
+          this.onlineStateTimer = null;
+        }
+      }
+    };
+    LOG_TAG$5 = "RemoteStore";
+    RemoteStoreImpl = class {
+      constructor(localStore, datastore, asyncQueue, onlineStateHandler, connectivityMonitor) {
+        this.localStore = localStore;
+        this.datastore = datastore;
+        this.asyncQueue = asyncQueue;
+        this.remoteSyncer = {};
+        this.writePipeline = [];
+        this.listenTargets = /* @__PURE__ */ new Map();
+        this.offlineCauses = /* @__PURE__ */ new Set();
+        this.onNetworkStatusChange = [];
+        this.connectivityMonitor = connectivityMonitor;
+        this.connectivityMonitor.addCallback((_) => {
+          asyncQueue.enqueueAndForget(async () => {
+            if (canUseNetwork(this)) {
+              logDebug(LOG_TAG$5, "Restarting streams for network reachability change.");
+              await restartNetwork(this);
+            }
+          });
+        });
+        this.onlineStateTracker = new OnlineStateTracker(asyncQueue, onlineStateHandler);
+      }
+    };
     LOG_TAG$4 = "AsyncQueue";
     DelayedOperation = class {
       constructor(asyncQueue, timerId, targetTimeMs, op, removalCallback) {
@@ -47679,8 +57863,765 @@ var init_index_node = __esm({
         }
       }
     };
+    DocumentSet = class {
+      /** The default ordering is by key if the comparator is omitted */
+      constructor(comp) {
+        if (comp) {
+          this.comparator = (d1, d2) => comp(d1, d2) || DocumentKey.comparator(d1.key, d2.key);
+        } else {
+          this.comparator = (d1, d2) => DocumentKey.comparator(d1.key, d2.key);
+        }
+        this.keyedMap = documentMap();
+        this.sortedSet = new SortedMap(this.comparator);
+      }
+      /**
+       * Returns an empty copy of the existing DocumentSet, using the same
+       * comparator.
+       */
+      static emptySet(oldSet) {
+        return new DocumentSet(oldSet.comparator);
+      }
+      has(key2) {
+        return this.keyedMap.get(key2) != null;
+      }
+      get(key2) {
+        return this.keyedMap.get(key2);
+      }
+      first() {
+        return this.sortedSet.minKey();
+      }
+      last() {
+        return this.sortedSet.maxKey();
+      }
+      isEmpty() {
+        return this.sortedSet.isEmpty();
+      }
+      /**
+       * Returns the index of the provided key in the document set, or -1 if the
+       * document key is not present in the set;
+       */
+      indexOf(key2) {
+        const doc2 = this.keyedMap.get(key2);
+        return doc2 ? this.sortedSet.indexOf(doc2) : -1;
+      }
+      get size() {
+        return this.sortedSet.size;
+      }
+      /** Iterates documents in order defined by "comparator" */
+      forEach(cb2) {
+        this.sortedSet.inorderTraversal((k2, v2) => {
+          cb2(k2);
+          return false;
+        });
+      }
+      /** Inserts or updates a document with the same key */
+      add(doc2) {
+        const set = this.delete(doc2.key);
+        return set.copy(set.keyedMap.insert(doc2.key, doc2), set.sortedSet.insert(doc2, null));
+      }
+      /** Deletes a document with a given key */
+      delete(key2) {
+        const doc2 = this.get(key2);
+        if (!doc2) {
+          return this;
+        }
+        return this.copy(this.keyedMap.remove(key2), this.sortedSet.remove(doc2));
+      }
+      isEqual(other) {
+        if (!(other instanceof DocumentSet)) {
+          return false;
+        }
+        if (this.size !== other.size) {
+          return false;
+        }
+        const thisIt = this.sortedSet.getIterator();
+        const otherIt = other.sortedSet.getIterator();
+        while (thisIt.hasNext()) {
+          const thisDoc = thisIt.getNext().key;
+          const otherDoc = otherIt.getNext().key;
+          if (!thisDoc.isEqual(otherDoc)) {
+            return false;
+          }
+        }
+        return true;
+      }
+      toString() {
+        const docStrings = [];
+        this.forEach((doc2) => {
+          docStrings.push(doc2.toString());
+        });
+        if (docStrings.length === 0) {
+          return "DocumentSet ()";
+        } else {
+          return "DocumentSet (\n  " + docStrings.join("  \n") + "\n)";
+        }
+      }
+      copy(keyedMap, sortedSet) {
+        const newSet = new DocumentSet();
+        newSet.comparator = this.comparator;
+        newSet.keyedMap = keyedMap;
+        newSet.sortedSet = sortedSet;
+        return newSet;
+      }
+    };
+    DocumentChangeSet = class {
+      constructor() {
+        this.changeMap = new SortedMap(DocumentKey.comparator);
+      }
+      track(change) {
+        const key2 = change.doc.key;
+        const oldChange = this.changeMap.get(key2);
+        if (!oldChange) {
+          this.changeMap = this.changeMap.insert(key2, change);
+          return;
+        }
+        if (change.type !== 0 && oldChange.type === 3) {
+          this.changeMap = this.changeMap.insert(key2, change);
+        } else if (change.type === 3 && oldChange.type !== 1) {
+          this.changeMap = this.changeMap.insert(key2, {
+            type: oldChange.type,
+            doc: change.doc
+          });
+        } else if (change.type === 2 && oldChange.type === 2) {
+          this.changeMap = this.changeMap.insert(key2, {
+            type: 2,
+            doc: change.doc
+          });
+        } else if (change.type === 2 && oldChange.type === 0) {
+          this.changeMap = this.changeMap.insert(key2, {
+            type: 0,
+            doc: change.doc
+          });
+        } else if (change.type === 1 && oldChange.type === 0) {
+          this.changeMap = this.changeMap.remove(key2);
+        } else if (change.type === 1 && oldChange.type === 2) {
+          this.changeMap = this.changeMap.insert(key2, {
+            type: 1,
+            doc: oldChange.doc
+          });
+        } else if (change.type === 0 && oldChange.type === 1) {
+          this.changeMap = this.changeMap.insert(key2, {
+            type: 2,
+            doc: change.doc
+          });
+        } else {
+          fail();
+        }
+      }
+      getChanges() {
+        const changes = [];
+        this.changeMap.inorderTraversal((key2, change) => {
+          changes.push(change);
+        });
+        return changes;
+      }
+    };
+    ViewSnapshot = class {
+      constructor(query, docs, oldDocs, docChanges, mutatedKeys, fromCache, syncStateChanged, excludesMetadataChanges, hasCachedResults) {
+        this.query = query;
+        this.docs = docs;
+        this.oldDocs = oldDocs;
+        this.docChanges = docChanges;
+        this.mutatedKeys = mutatedKeys;
+        this.fromCache = fromCache;
+        this.syncStateChanged = syncStateChanged;
+        this.excludesMetadataChanges = excludesMetadataChanges;
+        this.hasCachedResults = hasCachedResults;
+      }
+      /** Returns a view snapshot as if all documents in the snapshot were added. */
+      static fromInitialDocuments(query, documents, mutatedKeys, fromCache, hasCachedResults) {
+        const changes = [];
+        documents.forEach((doc2) => {
+          changes.push({ type: 0, doc: doc2 });
+        });
+        return new ViewSnapshot(
+          query,
+          documents,
+          DocumentSet.emptySet(documents),
+          changes,
+          mutatedKeys,
+          fromCache,
+          /* syncStateChanged= */
+          true,
+          /* excludesMetadataChanges= */
+          false,
+          hasCachedResults
+        );
+      }
+      get hasPendingWrites() {
+        return !this.mutatedKeys.isEmpty();
+      }
+      isEqual(other) {
+        if (this.fromCache !== other.fromCache || this.hasCachedResults !== other.hasCachedResults || this.syncStateChanged !== other.syncStateChanged || !this.mutatedKeys.isEqual(other.mutatedKeys) || !queryEquals(this.query, other.query) || !this.docs.isEqual(other.docs) || !this.oldDocs.isEqual(other.oldDocs)) {
+          return false;
+        }
+        const changes = this.docChanges;
+        const otherChanges = other.docChanges;
+        if (changes.length !== otherChanges.length) {
+          return false;
+        }
+        for (let i = 0; i < changes.length; i++) {
+          if (changes[i].type !== otherChanges[i].type || !changes[i].doc.isEqual(otherChanges[i].doc)) {
+            return false;
+          }
+        }
+        return true;
+      }
+    };
+    QueryListenersInfo = class {
+      constructor() {
+        this.viewSnap = void 0;
+        this.listeners = [];
+      }
+    };
+    EventManagerImpl = class {
+      constructor() {
+        this.queries = new ObjectMap((q2) => canonifyQuery(q2), queryEquals);
+        this.onlineState = "Unknown";
+        this.snapshotsInSyncListeners = /* @__PURE__ */ new Set();
+      }
+    };
+    QueryListener = class {
+      constructor(query, queryObserver, options2) {
+        this.query = query;
+        this.queryObserver = queryObserver;
+        this.raisedInitialEvent = false;
+        this.snap = null;
+        this.onlineState = "Unknown";
+        this.options = options2 || {};
+      }
+      /**
+       * Applies the new ViewSnapshot to this listener, raising a user-facing event
+       * if applicable (depending on what changed, whether the user has opted into
+       * metadata-only changes, etc.). Returns true if a user-facing event was
+       * indeed raised.
+       */
+      onViewSnapshot(snap) {
+        if (!this.options.includeMetadataChanges) {
+          const docChanges = [];
+          for (const docChange of snap.docChanges) {
+            if (docChange.type !== 3) {
+              docChanges.push(docChange);
+            }
+          }
+          snap = new ViewSnapshot(
+            snap.query,
+            snap.docs,
+            snap.oldDocs,
+            docChanges,
+            snap.mutatedKeys,
+            snap.fromCache,
+            snap.syncStateChanged,
+            /* excludesMetadataChanges= */
+            true,
+            snap.hasCachedResults
+          );
+        }
+        let raisedEvent = false;
+        if (!this.raisedInitialEvent) {
+          if (this.shouldRaiseInitialEvent(snap, this.onlineState)) {
+            this.raiseInitialEvent(snap);
+            raisedEvent = true;
+          }
+        } else if (this.shouldRaiseEvent(snap)) {
+          this.queryObserver.next(snap);
+          raisedEvent = true;
+        }
+        this.snap = snap;
+        return raisedEvent;
+      }
+      onError(error2) {
+        this.queryObserver.error(error2);
+      }
+      /** Returns whether a snapshot was raised. */
+      applyOnlineStateChange(onlineState) {
+        this.onlineState = onlineState;
+        let raisedEvent = false;
+        if (this.snap && !this.raisedInitialEvent && this.shouldRaiseInitialEvent(this.snap, onlineState)) {
+          this.raiseInitialEvent(this.snap);
+          raisedEvent = true;
+        }
+        return raisedEvent;
+      }
+      shouldRaiseInitialEvent(snap, onlineState) {
+        if (!snap.fromCache) {
+          return true;
+        }
+        const maybeOnline = onlineState !== "Offline";
+        if (this.options.waitForSyncWhenOnline && maybeOnline) {
+          return false;
+        }
+        return !snap.docs.isEmpty() || snap.hasCachedResults || onlineState === "Offline";
+      }
+      shouldRaiseEvent(snap) {
+        if (snap.docChanges.length > 0) {
+          return true;
+        }
+        const hasPendingWritesChanged = this.snap && this.snap.hasPendingWrites !== snap.hasPendingWrites;
+        if (snap.syncStateChanged || hasPendingWritesChanged) {
+          return this.options.includeMetadataChanges === true;
+        }
+        return false;
+      }
+      raiseInitialEvent(snap) {
+        snap = ViewSnapshot.fromInitialDocuments(snap.query, snap.docs, snap.mutatedKeys, snap.fromCache, snap.hasCachedResults);
+        this.raisedInitialEvent = true;
+        this.queryObserver.next(snap);
+      }
+    };
+    LocalViewChanges = class {
+      constructor(targetId, fromCache, addedKeys, removedKeys) {
+        this.targetId = targetId;
+        this.fromCache = fromCache;
+        this.addedKeys = addedKeys;
+        this.removedKeys = removedKeys;
+      }
+      static fromSnapshot(targetId, viewSnapshot) {
+        let addedKeys = documentKeySet();
+        let removedKeys = documentKeySet();
+        for (const docChange of viewSnapshot.docChanges) {
+          switch (docChange.type) {
+            case 0:
+              addedKeys = addedKeys.add(docChange.doc.key);
+              break;
+            case 1:
+              removedKeys = removedKeys.add(docChange.doc.key);
+              break;
+          }
+        }
+        return new LocalViewChanges(targetId, viewSnapshot.fromCache, addedKeys, removedKeys);
+      }
+    };
+    AddedLimboDocument = class {
+      constructor(key2) {
+        this.key = key2;
+      }
+    };
+    RemovedLimboDocument = class {
+      constructor(key2) {
+        this.key = key2;
+      }
+    };
+    View = class {
+      constructor(query, _syncedDocuments) {
+        this.query = query;
+        this._syncedDocuments = _syncedDocuments;
+        this.syncState = null;
+        this.hasCachedResults = false;
+        this.current = false;
+        this.limboDocuments = documentKeySet();
+        this.mutatedKeys = documentKeySet();
+        this.docComparator = newQueryComparator(query);
+        this.documentSet = new DocumentSet(this.docComparator);
+      }
+      /**
+       * The set of remote documents that the server has told us belongs to the target associated with
+       * this view.
+       */
+      get syncedDocuments() {
+        return this._syncedDocuments;
+      }
+      /**
+       * Iterates over a set of doc changes, applies the query limit, and computes
+       * what the new results should be, what the changes were, and whether we may
+       * need to go back to the local cache for more results. Does not make any
+       * changes to the view.
+       * @param docChanges - The doc changes to apply to this view.
+       * @param previousChanges - If this is being called with a refill, then start
+       *        with this set of docs and changes instead of the current view.
+       * @returns a new set of docs, changes, and refill flag.
+       */
+      computeDocChanges(docChanges, previousChanges) {
+        const changeSet = previousChanges ? previousChanges.changeSet : new DocumentChangeSet();
+        const oldDocumentSet = previousChanges ? previousChanges.documentSet : this.documentSet;
+        let newMutatedKeys = previousChanges ? previousChanges.mutatedKeys : this.mutatedKeys;
+        let newDocumentSet = oldDocumentSet;
+        let needsRefill = false;
+        const lastDocInLimit = this.query.limitType === "F" && oldDocumentSet.size === this.query.limit ? oldDocumentSet.last() : null;
+        const firstDocInLimit = this.query.limitType === "L" && oldDocumentSet.size === this.query.limit ? oldDocumentSet.first() : null;
+        docChanges.inorderTraversal((key2, entry) => {
+          const oldDoc = oldDocumentSet.get(key2);
+          const newDoc = queryMatches(this.query, entry) ? entry : null;
+          const oldDocHadPendingMutations = oldDoc ? this.mutatedKeys.has(oldDoc.key) : false;
+          const newDocHasPendingMutations = newDoc ? newDoc.hasLocalMutations || // We only consider committed mutations for documents that were
+          // mutated during the lifetime of the view.
+          this.mutatedKeys.has(newDoc.key) && newDoc.hasCommittedMutations : false;
+          let changeApplied = false;
+          if (oldDoc && newDoc) {
+            const docsEqual = oldDoc.data.isEqual(newDoc.data);
+            if (!docsEqual) {
+              if (!this.shouldWaitForSyncedDocument(oldDoc, newDoc)) {
+                changeSet.track({
+                  type: 2,
+                  doc: newDoc
+                });
+                changeApplied = true;
+                if (lastDocInLimit && this.docComparator(newDoc, lastDocInLimit) > 0 || firstDocInLimit && this.docComparator(newDoc, firstDocInLimit) < 0) {
+                  needsRefill = true;
+                }
+              }
+            } else if (oldDocHadPendingMutations !== newDocHasPendingMutations) {
+              changeSet.track({ type: 3, doc: newDoc });
+              changeApplied = true;
+            }
+          } else if (!oldDoc && newDoc) {
+            changeSet.track({ type: 0, doc: newDoc });
+            changeApplied = true;
+          } else if (oldDoc && !newDoc) {
+            changeSet.track({ type: 1, doc: oldDoc });
+            changeApplied = true;
+            if (lastDocInLimit || firstDocInLimit) {
+              needsRefill = true;
+            }
+          }
+          if (changeApplied) {
+            if (newDoc) {
+              newDocumentSet = newDocumentSet.add(newDoc);
+              if (newDocHasPendingMutations) {
+                newMutatedKeys = newMutatedKeys.add(key2);
+              } else {
+                newMutatedKeys = newMutatedKeys.delete(key2);
+              }
+            } else {
+              newDocumentSet = newDocumentSet.delete(key2);
+              newMutatedKeys = newMutatedKeys.delete(key2);
+            }
+          }
+        });
+        if (this.query.limit !== null) {
+          while (newDocumentSet.size > this.query.limit) {
+            const oldDoc = this.query.limitType === "F" ? newDocumentSet.last() : newDocumentSet.first();
+            newDocumentSet = newDocumentSet.delete(oldDoc.key);
+            newMutatedKeys = newMutatedKeys.delete(oldDoc.key);
+            changeSet.track({ type: 1, doc: oldDoc });
+          }
+        }
+        return {
+          documentSet: newDocumentSet,
+          changeSet,
+          needsRefill,
+          mutatedKeys: newMutatedKeys
+        };
+      }
+      shouldWaitForSyncedDocument(oldDoc, newDoc) {
+        return oldDoc.hasLocalMutations && newDoc.hasCommittedMutations && !newDoc.hasLocalMutations;
+      }
+      /**
+       * Updates the view with the given ViewDocumentChanges and optionally updates
+       * limbo docs and sync state from the provided target change.
+       * @param docChanges - The set of changes to make to the view's docs.
+       * @param updateLimboDocuments - Whether to update limbo documents based on
+       *        this change.
+       * @param targetChange - A target change to apply for computing limbo docs and
+       *        sync state.
+       * @returns A new ViewChange with the given docs, changes, and sync state.
+       */
+      // PORTING NOTE: The iOS/Android clients always compute limbo document changes.
+      applyChanges(docChanges, updateLimboDocuments, targetChange) {
+        const oldDocs = this.documentSet;
+        this.documentSet = docChanges.documentSet;
+        this.mutatedKeys = docChanges.mutatedKeys;
+        const changes = docChanges.changeSet.getChanges();
+        changes.sort((c1, c2) => {
+          return compareChangeType(c1.type, c2.type) || this.docComparator(c1.doc, c2.doc);
+        });
+        this.applyTargetChange(targetChange);
+        const limboChanges = updateLimboDocuments ? this.updateLimboDocuments() : [];
+        const synced = this.limboDocuments.size === 0 && this.current;
+        const newSyncState = synced ? 1 : 0;
+        const syncStateChanged = newSyncState !== this.syncState;
+        this.syncState = newSyncState;
+        if (changes.length === 0 && !syncStateChanged) {
+          return { limboChanges };
+        } else {
+          const snap = new ViewSnapshot(
+            this.query,
+            docChanges.documentSet,
+            oldDocs,
+            changes,
+            docChanges.mutatedKeys,
+            newSyncState === 0,
+            syncStateChanged,
+            /* excludesMetadataChanges= */
+            false,
+            targetChange ? targetChange.resumeToken.approximateByteSize() > 0 : false
+          );
+          return {
+            snapshot: snap,
+            limboChanges
+          };
+        }
+      }
+      /**
+       * Applies an OnlineState change to the view, potentially generating a
+       * ViewChange if the view's syncState changes as a result.
+       */
+      applyOnlineStateChange(onlineState) {
+        if (this.current && onlineState === "Offline") {
+          this.current = false;
+          return this.applyChanges(
+            {
+              documentSet: this.documentSet,
+              changeSet: new DocumentChangeSet(),
+              mutatedKeys: this.mutatedKeys,
+              needsRefill: false
+            },
+            /* updateLimboDocuments= */
+            false
+          );
+        } else {
+          return { limboChanges: [] };
+        }
+      }
+      /**
+       * Returns whether the doc for the given key should be in limbo.
+       */
+      shouldBeInLimbo(key2) {
+        if (this._syncedDocuments.has(key2)) {
+          return false;
+        }
+        if (!this.documentSet.has(key2)) {
+          return false;
+        }
+        if (this.documentSet.get(key2).hasLocalMutations) {
+          return false;
+        }
+        return true;
+      }
+      /**
+       * Updates syncedDocuments, current, and limbo docs based on the given change.
+       * Returns the list of changes to which docs are in limbo.
+       */
+      applyTargetChange(targetChange) {
+        if (targetChange) {
+          targetChange.addedDocuments.forEach((key2) => this._syncedDocuments = this._syncedDocuments.add(key2));
+          targetChange.modifiedDocuments.forEach((key2) => {
+          });
+          targetChange.removedDocuments.forEach((key2) => this._syncedDocuments = this._syncedDocuments.delete(key2));
+          this.current = targetChange.current;
+        }
+      }
+      updateLimboDocuments() {
+        if (!this.current) {
+          return [];
+        }
+        const oldLimboDocuments = this.limboDocuments;
+        this.limboDocuments = documentKeySet();
+        this.documentSet.forEach((doc2) => {
+          if (this.shouldBeInLimbo(doc2.key)) {
+            this.limboDocuments = this.limboDocuments.add(doc2.key);
+          }
+        });
+        const changes = [];
+        oldLimboDocuments.forEach((key2) => {
+          if (!this.limboDocuments.has(key2)) {
+            changes.push(new RemovedLimboDocument(key2));
+          }
+        });
+        this.limboDocuments.forEach((key2) => {
+          if (!oldLimboDocuments.has(key2)) {
+            changes.push(new AddedLimboDocument(key2));
+          }
+        });
+        return changes;
+      }
+      /**
+       * Update the in-memory state of the current view with the state read from
+       * persistence.
+       *
+       * We update the query view whenever a client's primary status changes:
+       * - When a client transitions from primary to secondary, it can miss
+       *   LocalStorage updates and its query views may temporarily not be
+       *   synchronized with the state on disk.
+       * - For secondary to primary transitions, the client needs to update the list
+       *   of `syncedDocuments` since secondary clients update their query views
+       *   based purely on synthesized RemoteEvents.
+       *
+       * @param queryResult.documents - The documents that match the query according
+       * to the LocalStore.
+       * @param queryResult.remoteKeys - The keys of the documents that match the
+       * query according to the backend.
+       *
+       * @returns The ViewChange that resulted from this synchronization.
+       */
+      // PORTING NOTE: Multi-tab only.
+      synchronizeWithPersistedState(queryResult) {
+        this._syncedDocuments = queryResult.remoteKeys;
+        this.limboDocuments = documentKeySet();
+        const docChanges = this.computeDocChanges(queryResult.documents);
+        return this.applyChanges(
+          docChanges,
+          /*updateLimboDocuments=*/
+          true
+        );
+      }
+      /**
+       * Returns a view snapshot as if this query was just listened to. Contains
+       * a document add for every existing document and the `fromCache` and
+       * `hasPendingWrites` status of the already established view.
+       */
+      // PORTING NOTE: Multi-tab only.
+      computeInitialSnapshot() {
+        return ViewSnapshot.fromInitialDocuments(this.query, this.documentSet, this.mutatedKeys, this.syncState === 0, this.hasCachedResults);
+      }
+    };
+    LOG_TAG$3 = "SyncEngine";
+    QueryView = class {
+      constructor(query, targetId, view) {
+        this.query = query;
+        this.targetId = targetId;
+        this.view = view;
+      }
+    };
+    LimboResolution = class {
+      constructor(key2) {
+        this.key = key2;
+        this.receivedDocument = false;
+      }
+    };
+    SyncEngineImpl = class {
+      constructor(localStore, remoteStore, eventManager, sharedClientState, currentUser, maxConcurrentLimboResolutions) {
+        this.localStore = localStore;
+        this.remoteStore = remoteStore;
+        this.eventManager = eventManager;
+        this.sharedClientState = sharedClientState;
+        this.currentUser = currentUser;
+        this.maxConcurrentLimboResolutions = maxConcurrentLimboResolutions;
+        this.syncEngineListener = {};
+        this.queryViewsByQuery = new ObjectMap((q2) => canonifyQuery(q2), queryEquals);
+        this.queriesByTarget = /* @__PURE__ */ new Map();
+        this.enqueuedLimboResolutions = /* @__PURE__ */ new Set();
+        this.activeLimboTargetsByKey = new SortedMap(DocumentKey.comparator);
+        this.activeLimboResolutionsByTarget = /* @__PURE__ */ new Map();
+        this.limboDocumentRefs = new ReferenceSet();
+        this.mutationUserCallbacks = {};
+        this.pendingWritesCallbacks = /* @__PURE__ */ new Map();
+        this.limboTargetIdGenerator = TargetIdGenerator.forSyncEngine();
+        this.onlineState = "Unknown";
+        this._isPrimaryClient = void 0;
+      }
+      get isPrimaryClient() {
+        return this._isPrimaryClient === true;
+      }
+    };
+    MemoryOfflineComponentProvider = class {
+      constructor() {
+        this.synchronizeTabs = false;
+      }
+      async initialize(cfg) {
+        this.serializer = newSerializer(cfg.databaseInfo.databaseId);
+        this.sharedClientState = this.createSharedClientState(cfg);
+        this.persistence = this.createPersistence(cfg);
+        await this.persistence.start();
+        this.localStore = this.createLocalStore(cfg);
+        this.gcScheduler = this.createGarbageCollectionScheduler(cfg, this.localStore);
+        this.indexBackfillerScheduler = this.createIndexBackfillerScheduler(cfg, this.localStore);
+      }
+      createGarbageCollectionScheduler(cfg, localStore) {
+        return null;
+      }
+      createIndexBackfillerScheduler(cfg, localStore) {
+        return null;
+      }
+      createLocalStore(cfg) {
+        return newLocalStore(this.persistence, new QueryEngine(), cfg.initialUser, this.serializer);
+      }
+      createPersistence(cfg) {
+        return new MemoryPersistence(MemoryEagerDelegate.factory, this.serializer);
+      }
+      createSharedClientState(cfg) {
+        return new MemorySharedClientState();
+      }
+      async terminate() {
+        if (this.gcScheduler) {
+          this.gcScheduler.stop();
+        }
+        await this.sharedClientState.shutdown();
+        await this.persistence.shutdown();
+      }
+    };
+    OnlineComponentProvider = class {
+      async initialize(offlineComponentProvider, cfg) {
+        if (this.localStore) {
+          return;
+        }
+        this.localStore = offlineComponentProvider.localStore;
+        this.sharedClientState = offlineComponentProvider.sharedClientState;
+        this.datastore = this.createDatastore(cfg);
+        this.remoteStore = this.createRemoteStore(cfg);
+        this.eventManager = this.createEventManager(cfg);
+        this.syncEngine = this.createSyncEngine(
+          cfg,
+          /* startAsPrimary=*/
+          !offlineComponentProvider.synchronizeTabs
+        );
+        this.sharedClientState.onlineStateHandler = (onlineState) => syncEngineApplyOnlineStateChange(
+          this.syncEngine,
+          onlineState,
+          1
+          /* OnlineStateSource.SharedClientState */
+        );
+        this.remoteStore.remoteSyncer.handleCredentialChange = syncEngineHandleCredentialChange.bind(null, this.syncEngine);
+        await remoteStoreApplyPrimaryState(this.remoteStore, this.syncEngine.isPrimaryClient);
+      }
+      createEventManager(cfg) {
+        return newEventManager();
+      }
+      createDatastore(cfg) {
+        const serializer = newSerializer(cfg.databaseInfo.databaseId);
+        const connection = newConnection(cfg.databaseInfo);
+        return newDatastore(cfg.authCredentials, cfg.appCheckCredentials, connection, serializer);
+      }
+      createRemoteStore(cfg) {
+        return newRemoteStore(this.localStore, this.datastore, cfg.asyncQueue, (onlineState) => syncEngineApplyOnlineStateChange(
+          this.syncEngine,
+          onlineState,
+          0
+          /* OnlineStateSource.RemoteStore */
+        ), newConnectivityMonitor());
+      }
+      createSyncEngine(cfg, startAsPrimary) {
+        return newSyncEngine(this.localStore, this.remoteStore, this.eventManager, this.sharedClientState, cfg.initialUser, cfg.maxConcurrentLimboResolutions, startAsPrimary);
+      }
+      terminate() {
+        return remoteStoreShutdown(this.remoteStore);
+      }
+    };
+    AsyncObserver = class {
+      constructor(observer) {
+        this.observer = observer;
+        this.muted = false;
+      }
+      next(value) {
+        if (this.observer.next) {
+          this.scheduleEvent(this.observer.next, value);
+        }
+      }
+      error(error2) {
+        if (this.observer.error) {
+          this.scheduleEvent(this.observer.error, error2);
+        } else {
+          logError("Uncaught Error in snapshot listener:", error2.toString());
+        }
+      }
+      mute() {
+        this.muted = true;
+      }
+      scheduleEvent(eventHandler, event) {
+        if (!this.muted) {
+          setTimeout(() => {
+            if (!this.muted) {
+              eventHandler(event);
+            }
+          }, 0);
+        }
+      }
+    };
     LOG_TAG$2 = "FirestoreClient";
     MAX_CONCURRENT_LIMBO_RESOLUTIONS = 100;
+    DOM_EXCEPTION_INVALID_STATE = 11;
+    DOM_EXCEPTION_ABORTED = 20;
+    DOM_EXCEPTION_QUOTA_EXCEEDED = 22;
     FirestoreClient = class {
       constructor(authCredentials, appCheckCredentials, asyncQueue, databaseInfo) {
         this.authCredentials = authCredentials;
@@ -47866,6 +58807,92 @@ var init_index_node = __esm({
       _terminate() {
         removeComponents(this);
         return Promise.resolve();
+      }
+    };
+    Query = class {
+      // This is the lite version of the Query class in the main SDK.
+      /** @hideconstructor protected */
+      constructor(firestore, converter, _query) {
+        this.converter = converter;
+        this._query = _query;
+        this.type = "query";
+        this.firestore = firestore;
+      }
+      withConverter(converter) {
+        return new Query(this.firestore, converter, this._query);
+      }
+    };
+    DocumentReference = class {
+      /** @hideconstructor */
+      constructor(firestore, converter, _key) {
+        this.converter = converter;
+        this._key = _key;
+        this.type = "document";
+        this.firestore = firestore;
+      }
+      get _path() {
+        return this._key.path;
+      }
+      /**
+       * The document's identifier within its collection.
+       */
+      get id() {
+        return this._key.path.lastSegment();
+      }
+      /**
+       * A string representing the path of the referenced document (relative
+       * to the root of the database).
+       */
+      get path() {
+        return this._key.path.canonicalString();
+      }
+      /**
+       * The collection this `DocumentReference` belongs to.
+       */
+      get parent() {
+        return new CollectionReference(this.firestore, this.converter, this._key.path.popLast());
+      }
+      withConverter(converter) {
+        return new DocumentReference(this.firestore, converter, this._key);
+      }
+    };
+    CollectionReference = class extends Query {
+      /** @hideconstructor */
+      constructor(firestore, converter, _path) {
+        super(firestore, converter, newQueryForPath(_path));
+        this._path = _path;
+        this.type = "collection";
+      }
+      /** The collection's identifier. */
+      get id() {
+        return this._query.path.lastSegment();
+      }
+      /**
+       * A string representing the path of the referenced collection (relative
+       * to the root of the database).
+       */
+      get path() {
+        return this._query.path.canonicalString();
+      }
+      /**
+       * A reference to the containing `DocumentReference` if this is a
+       * subcollection. If this isn't a subcollection, the reference is null.
+       */
+      get parent() {
+        const parentPath = this._path.popLast();
+        if (parentPath.isEmpty()) {
+          return null;
+        } else {
+          return new DocumentReference(
+            this.firestore,
+            /* converter= */
+            null,
+            new DocumentKey(parentPath)
+          );
+        }
+      }
+      withConverter(converter) {
+        return new CollectionReference(this.firestore, converter, this._path);
       }
     };
     LOG_TAG = "AsyncQueue";
@@ -48054,7 +59081,488 @@ var init_index_node = __esm({
         return this._firestoreClient.terminate();
       }
     };
+    Bytes = class {
+      /** @hideconstructor */
+      constructor(byteString) {
+        this._byteString = byteString;
+      }
+      /**
+       * Creates a new `Bytes` object from the given Base64 string, converting it to
+       * bytes.
+       *
+       * @param base64 - The Base64 string used to create the `Bytes` object.
+       */
+      static fromBase64String(base643) {
+        try {
+          return new Bytes(ByteString.fromBase64String(base643));
+        } catch (e) {
+          throw new FirestoreError(Code.INVALID_ARGUMENT, "Failed to construct data from Base64 string: " + e);
+        }
+      }
+      /**
+       * Creates a new `Bytes` object from the given Uint8Array.
+       *
+       * @param array - The Uint8Array used to create the `Bytes` object.
+       */
+      static fromUint8Array(array2) {
+        return new Bytes(ByteString.fromUint8Array(array2));
+      }
+      /**
+       * Returns the underlying bytes as a Base64-encoded string.
+       *
+       * @returns The Base64-encoded string created from the `Bytes` object.
+       */
+      toBase64() {
+        return this._byteString.toBase64();
+      }
+      /**
+       * Returns the underlying bytes in a new `Uint8Array`.
+       *
+       * @returns The Uint8Array created from the `Bytes` object.
+       */
+      toUint8Array() {
+        return this._byteString.toUint8Array();
+      }
+      /**
+       * Returns a string representation of the `Bytes` object.
+       *
+       * @returns A string representation of the `Bytes` object.
+       */
+      toString() {
+        return "Bytes(base64: " + this.toBase64() + ")";
+      }
+      /**
+       * Returns true if this `Bytes` object is equal to the provided one.
+       *
+       * @param other - The `Bytes` object to compare against.
+       * @returns true if this `Bytes` object is equal to the provided one.
+       */
+      isEqual(other) {
+        return this._byteString.isEqual(other._byteString);
+      }
+    };
+    FieldPath = class {
+      /**
+       * Creates a `FieldPath` from the provided field names. If more than one field
+       * name is provided, the path will point to a nested field in a document.
+       *
+       * @param fieldNames - A list of field names.
+       */
+      constructor(...fieldNames) {
+        for (let i = 0; i < fieldNames.length; ++i) {
+          if (fieldNames[i].length === 0) {
+            throw new FirestoreError(Code.INVALID_ARGUMENT, `Invalid field name at argument $(i + 1). Field names must not be empty.`);
+          }
+        }
+        this._internalPath = new FieldPath$1(fieldNames);
+      }
+      /**
+       * Returns true if this `FieldPath` is equal to the provided one.
+       *
+       * @param other - The `FieldPath` to compare against.
+       * @returns true if this `FieldPath` is equal to the provided one.
+       */
+      isEqual(other) {
+        return this._internalPath.isEqual(other._internalPath);
+      }
+    };
+    GeoPoint = class {
+      /**
+       * Creates a new immutable `GeoPoint` object with the provided latitude and
+       * longitude values.
+       * @param latitude - The latitude as number between -90 and 90.
+       * @param longitude - The longitude as number between -180 and 180.
+       */
+      constructor(latitude, longitude) {
+        if (!isFinite(latitude) || latitude < -90 || latitude > 90) {
+          throw new FirestoreError(Code.INVALID_ARGUMENT, "Latitude must be a number between -90 and 90, but was: " + latitude);
+        }
+        if (!isFinite(longitude) || longitude < -180 || longitude > 180) {
+          throw new FirestoreError(Code.INVALID_ARGUMENT, "Longitude must be a number between -180 and 180, but was: " + longitude);
+        }
+        this._lat = latitude;
+        this._long = longitude;
+      }
+      /**
+       * The latitude of this `GeoPoint` instance.
+       */
+      get latitude() {
+        return this._lat;
+      }
+      /**
+       * The longitude of this `GeoPoint` instance.
+       */
+      get longitude() {
+        return this._long;
+      }
+      /**
+       * Returns true if this `GeoPoint` is equal to the provided one.
+       *
+       * @param other - The `GeoPoint` to compare against.
+       * @returns true if this `GeoPoint` is equal to the provided one.
+       */
+      isEqual(other) {
+        return this._lat === other._lat && this._long === other._long;
+      }
+      /** Returns a JSON-serializable representation of this GeoPoint. */
+      toJSON() {
+        return { latitude: this._lat, longitude: this._long };
+      }
+      /**
+       * Actually private to JS consumers of our API, so this function is prefixed
+       * with an underscore.
+       */
+      _compareTo(other) {
+        return primitiveComparator(this._lat, other._lat) || primitiveComparator(this._long, other._long);
+      }
+    };
     FIELD_PATH_RESERVED = new RegExp("[~\\*/\\[\\]]");
+    DocumentSnapshot$1 = class {
+      // Note: This class is stripped down version of the DocumentSnapshot in
+      // the legacy SDK. The changes are:
+      // - No support for SnapshotMetadata.
+      // - No support for SnapshotOptions.
+      /** @hideconstructor protected */
+      constructor(_firestore, _userDataWriter, _key, _document, _converter) {
+        this._firestore = _firestore;
+        this._userDataWriter = _userDataWriter;
+        this._key = _key;
+        this._document = _document;
+        this._converter = _converter;
+      }
+      /** Property of the `DocumentSnapshot` that provides the document's ID. */
+      get id() {
+        return this._key.path.lastSegment();
+      }
+      /**
+       * The `DocumentReference` for the document included in the `DocumentSnapshot`.
+       */
+      get ref() {
+        return new DocumentReference(this._firestore, this._converter, this._key);
+      }
+      /**
+       * Signals whether or not the document at the snapshot's location exists.
+       *
+       * @returns true if the document exists.
+       */
+      exists() {
+        return this._document !== null;
+      }
+      /**
+       * Retrieves all fields in the document as an `Object`. Returns `undefined` if
+       * the document doesn't exist.
+       *
+       * @returns An `Object` containing all fields in the document or `undefined`
+       * if the document doesn't exist.
+       */
+      data() {
+        if (!this._document) {
+          return void 0;
+        } else if (this._converter) {
+          const snapshot = new QueryDocumentSnapshot$1(
+            this._firestore,
+            this._userDataWriter,
+            this._key,
+            this._document,
+            /* converter= */
+            null
+          );
+          return this._converter.fromFirestore(snapshot);
+        } else {
+          return this._userDataWriter.convertValue(this._document.data.value);
+        }
+      }
+      /**
+       * Retrieves the field specified by `fieldPath`. Returns `undefined` if the
+       * document or field doesn't exist.
+       *
+       * @param fieldPath - The path (for example 'foo' or 'foo.bar') to a specific
+       * field.
+       * @returns The data at the specified field location or undefined if no such
+       * field exists in the document.
+       */
+      // We are using `any` here to avoid an explicit cast by our users.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      get(fieldPath) {
+        if (this._document) {
+          const value = this._document.data.field(fieldPathFromArgument("DocumentSnapshot.get", fieldPath));
+          if (value !== null) {
+            return this._userDataWriter.convertValue(value);
+          }
+        }
+        return void 0;
+      }
+    };
+    QueryDocumentSnapshot$1 = class extends DocumentSnapshot$1 {
+      /**
+       * Retrieves all fields in the document as an `Object`.
+       *
+       * @override
+       * @returns An `Object` containing all fields in the document.
+       */
+      data() {
+        return super.data();
+      }
+    };
+    AbstractUserDataWriter = class {
+      convertValue(value, serverTimestampBehavior = "none") {
+        switch (typeOrder(value)) {
+          case 0:
+            return null;
+          case 1:
+            return value.booleanValue;
+          case 2:
+            return normalizeNumber(value.integerValue || value.doubleValue);
+          case 3:
+            return this.convertTimestamp(value.timestampValue);
+          case 4:
+            return this.convertServerTimestamp(value, serverTimestampBehavior);
+          case 5:
+            return value.stringValue;
+          case 6:
+            return this.convertBytes(normalizeByteString(value.bytesValue));
+          case 7:
+            return this.convertReference(value.referenceValue);
+          case 8:
+            return this.convertGeoPoint(value.geoPointValue);
+          case 9:
+            return this.convertArray(value.arrayValue, serverTimestampBehavior);
+          case 10:
+            return this.convertObject(value.mapValue, serverTimestampBehavior);
+          default:
+            throw fail();
+        }
+      }
+      convertObject(mapValue, serverTimestampBehavior) {
+        return this.convertObjectMap(mapValue.fields, serverTimestampBehavior);
+      }
+      /**
+       * @internal
+       */
+      convertObjectMap(fields, serverTimestampBehavior = "none") {
+        const result = {};
+        forEach(fields, (key2, value) => {
+          result[key2] = this.convertValue(value, serverTimestampBehavior);
+        });
+        return result;
+      }
+      convertGeoPoint(value) {
+        return new GeoPoint(normalizeNumber(value.latitude), normalizeNumber(value.longitude));
+      }
+      convertArray(arrayValue, serverTimestampBehavior) {
+        return (arrayValue.values || []).map((value) => this.convertValue(value, serverTimestampBehavior));
+      }
+      convertServerTimestamp(value, serverTimestampBehavior) {
+        switch (serverTimestampBehavior) {
+          case "previous":
+            const previousValue = getPreviousValue(value);
+            if (previousValue == null) {
+              return null;
+            }
+            return this.convertValue(previousValue, serverTimestampBehavior);
+          case "estimate":
+            return this.convertTimestamp(getLocalWriteTime(value));
+          default:
+            return null;
+        }
+      }
+      convertTimestamp(value) {
+        const normalizedValue = normalizeTimestamp(value);
+        return new Timestamp(normalizedValue.seconds, normalizedValue.nanos);
+      }
+      convertDocumentKey(name5, expectedDatabaseId) {
+        const resourcePath = ResourcePath.fromString(name5);
+        hardAssert(isValidResourceName(resourcePath));
+        const databaseId = new DatabaseId(resourcePath.get(1), resourcePath.get(3));
+        const key2 = new DocumentKey(resourcePath.popFirst(5));
+        if (!databaseId.isEqual(expectedDatabaseId)) {
+          logError(`Document ${key2} contains a document reference within a different database (${databaseId.projectId}/${databaseId.database}) which is not supported. It will be treated as a reference in the current database (${expectedDatabaseId.projectId}/${expectedDatabaseId.database}) instead.`);
+        }
+        return key2;
+      }
+    };
+    SnapshotMetadata = class {
+      /** @hideconstructor */
+      constructor(hasPendingWrites, fromCache) {
+        this.hasPendingWrites = hasPendingWrites;
+        this.fromCache = fromCache;
+      }
+      /**
+       * Returns true if this `SnapshotMetadata` is equal to the provided one.
+       *
+       * @param other - The `SnapshotMetadata` to compare against.
+       * @returns true if this `SnapshotMetadata` is equal to the provided one.
+       */
+      isEqual(other) {
+        return this.hasPendingWrites === other.hasPendingWrites && this.fromCache === other.fromCache;
+      }
+    };
+    DocumentSnapshot = class extends DocumentSnapshot$1 {
+      /** @hideconstructor protected */
+      constructor(_firestore, userDataWriter, key2, document2, metadata, converter) {
+        super(_firestore, userDataWriter, key2, document2, converter);
+        this._firestore = _firestore;
+        this._firestoreImpl = _firestore;
+        this.metadata = metadata;
+      }
+      /**
+       * Returns whether or not the data exists. True if the document exists.
+       */
+      exists() {
+        return super.exists();
+      }
+      /**
+       * Retrieves all fields in the document as an `Object`. Returns `undefined` if
+       * the document doesn't exist.
+       *
+       * By default, `serverTimestamp()` values that have not yet been
+       * set to their final value will be returned as `null`. You can override
+       * this by passing an options object.
+       *
+       * @param options - An options object to configure how data is retrieved from
+       * the snapshot (for example the desired behavior for server timestamps that
+       * have not yet been set to their final value).
+       * @returns An `Object` containing all fields in the document or `undefined` if
+       * the document doesn't exist.
+       */
+      data(options2 = {}) {
+        if (!this._document) {
+          return void 0;
+        } else if (this._converter) {
+          const snapshot = new QueryDocumentSnapshot(
+            this._firestore,
+            this._userDataWriter,
+            this._key,
+            this._document,
+            this.metadata,
+            /* converter= */
+            null
+          );
+          return this._converter.fromFirestore(snapshot, options2);
+        } else {
+          return this._userDataWriter.convertValue(this._document.data.value, options2.serverTimestamps);
+        }
+      }
+      /**
+       * Retrieves the field specified by `fieldPath`. Returns `undefined` if the
+       * document or field doesn't exist.
+       *
+       * By default, a `serverTimestamp()` that has not yet been set to
+       * its final value will be returned as `null`. You can override this by
+       * passing an options object.
+       *
+       * @param fieldPath - The path (for example 'foo' or 'foo.bar') to a specific
+       * field.
+       * @param options - An options object to configure how the field is retrieved
+       * from the snapshot (for example the desired behavior for server timestamps
+       * that have not yet been set to their final value).
+       * @returns The data at the specified field location or undefined if no such
+       * field exists in the document.
+       */
+      // We are using `any` here to avoid an explicit cast by our users.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      get(fieldPath, options2 = {}) {
+        if (this._document) {
+          const value = this._document.data.field(fieldPathFromArgument("DocumentSnapshot.get", fieldPath));
+          if (value !== null) {
+            return this._userDataWriter.convertValue(value, options2.serverTimestamps);
+          }
+        }
+        return void 0;
+      }
+    };
+    QueryDocumentSnapshot = class extends DocumentSnapshot {
+      /**
+       * Retrieves all fields in the document as an `Object`.
+       *
+       * By default, `serverTimestamp()` values that have not yet been
+       * set to their final value will be returned as `null`. You can override
+       * this by passing an options object.
+       *
+       * @override
+       * @param options - An options object to configure how data is retrieved from
+       * the snapshot (for example the desired behavior for server timestamps that
+       * have not yet been set to their final value).
+       * @returns An `Object` containing all fields in the document.
+       */
+      data(options2 = {}) {
+        return super.data(options2);
+      }
+    };
+    QuerySnapshot = class {
+      /** @hideconstructor */
+      constructor(_firestore, _userDataWriter, query, _snapshot) {
+        this._firestore = _firestore;
+        this._userDataWriter = _userDataWriter;
+        this._snapshot = _snapshot;
+        this.metadata = new SnapshotMetadata(_snapshot.hasPendingWrites, _snapshot.fromCache);
+        this.query = query;
+      }
+      /** An array of all the documents in the `QuerySnapshot`. */
+      get docs() {
+        const result = [];
+        this.forEach((doc2) => result.push(doc2));
+        return result;
+      }
+      /** The number of documents in the `QuerySnapshot`. */
+      get size() {
+        return this._snapshot.docs.size;
+      }
+      /** True if there are no documents in the `QuerySnapshot`. */
+      get empty() {
+        return this.size === 0;
+      }
+      /**
+       * Enumerates all of the documents in the `QuerySnapshot`.
+       *
+       * @param callback - A callback to be called with a `QueryDocumentSnapshot` for
+       * each document in the snapshot.
+       * @param thisArg - The `this` binding for the callback.
+       */
+      forEach(callback, thisArg) {
+        this._snapshot.docs.forEach((doc2) => {
+          callback.call(thisArg, new QueryDocumentSnapshot(this._firestore, this._userDataWriter, doc2.key, doc2, new SnapshotMetadata(this._snapshot.mutatedKeys.has(doc2.key), this._snapshot.fromCache), this.query.converter));
+        });
+      }
+      /**
+       * Returns an array of the documents changes since the last snapshot. If this
+       * is the first snapshot, all documents will be in the list as 'added'
+       * changes.
+       *
+       * @param options - `SnapshotListenOptions` that control whether metadata-only
+       * changes (i.e. only `DocumentSnapshot.metadata` changed) should trigger
+       * snapshot events.
+       */
+      docChanges(options2 = {}) {
+        const includeMetadataChanges = !!options2.includeMetadataChanges;
+        if (includeMetadataChanges && this._snapshot.excludesMetadataChanges) {
+          throw new FirestoreError(Code.INVALID_ARGUMENT, "To include metadata changes with your document changes, you must also pass { includeMetadataChanges:true } to onSnapshot().");
+        }
+        if (!this._cachedChanges || this._cachedChangesIncludeMetadataChanges !== includeMetadataChanges) {
+          this._cachedChanges = changesFromSnapshot(this, includeMetadataChanges);
+          this._cachedChangesIncludeMetadataChanges = includeMetadataChanges;
+        }
+        return this._cachedChanges;
+      }
+    };
+    ExpUserDataWriter = class extends AbstractUserDataWriter {
+      constructor(firestore) {
+        super();
+        this.firestore = firestore;
+      }
+      convertBytes(bytes) {
+        return new Bytes(bytes);
+      }
+      convertReference(name5) {
+        const key2 = this.convertDocumentKey(name5, this.firestore._databaseId);
+        return new DocumentReference(
+          this.firestore,
+          /* converter= */
+          null,
+          key2
+        );
+      }
+    };
     registerFirestore("node");
   }
 });
@@ -48104,7 +59612,30 @@ function userStore() {
     subscribe: subscribe2
   };
 }
-var firebaseConfig, app, auth, user;
+function docStore(path) {
+  let unsubscribe;
+  const docRef = doc(db2, path);
+  const { subscribe: subscribe2 } = writable(
+    { data: null, status: null },
+    (startSet) => {
+      unsubscribe = onSnapshot(docRef, (snapshot) => {
+        const exists = snapshot.exists();
+        if (exists) {
+          startSet({ data: snapshot.data() ?? null, status: true });
+        } else {
+          startSet({ data: null, status: false });
+        }
+      });
+      return () => unsubscribe();
+    }
+  );
+  return {
+    subscribe: subscribe2,
+    ref: docRef,
+    id: docRef.id
+  };
+}
+var firebaseConfig, app, db2, auth, user, thisUser;
 var init_firebase = __esm({
   ".svelte-kit/output/server/chunks/firebase.js"() {
     init_shims();
@@ -48122,17 +59653,51 @@ var init_firebase = __esm({
       measurementId: "G-SXS58GXBB7"
     };
     app = initializeApp(firebaseConfig);
-    getFirestore(app);
+    db2 = getFirestore(app);
     auth = getAuth(app);
     new GoogleAuthProvider();
     user = userStore();
+    thisUser = derived(
+      user,
+      ($user, set) => {
+        if ($user) {
+          return docStore(`users/${$user.uid}`).subscribe(
+            ({ data, status }) => {
+              if (status === true) {
+                set(data);
+              } else if (status === false) {
+                set(null);
+              }
+            }
+          );
+        } else {
+          set(void 0);
+        }
+      }
+    );
   }
 });
 
 // .svelte-kit/output/server/chunks/stores.js
-var getStores, page;
+var scrollY, myKeywords, initialState, historyStore;
 var init_stores = __esm({
   ".svelte-kit/output/server/chunks/stores.js"() {
+    init_shims();
+    init_index2();
+    scrollY = writable(0);
+    myKeywords = writable([]);
+    initialState = {
+      history: [],
+      currentIndex: -1
+    };
+    historyStore = writable(initialState);
+  }
+});
+
+// .svelte-kit/output/server/chunks/stores2.js
+var getStores, page;
+var init_stores2 = __esm({
+  ".svelte-kit/output/server/chunks/stores2.js"() {
     init_shims();
     init_ssr();
     getStores = () => {
@@ -48171,11 +59736,23 @@ var init_layout_svelte = __esm({
     init_ssr();
     init_firebase();
     init_stores();
+    init_stores2();
     Layout = create_ssr_component(($$result, $$props, $$bindings, slots) => {
+      let $thisUser, $$unsubscribe_thisUser;
       let $$unsubscribe_page;
       let $$unsubscribe_user;
+      $$unsubscribe_thisUser = subscribe(thisUser, (value) => $thisUser = value);
       $$unsubscribe_page = subscribe(page, (value) => value);
       $$unsubscribe_user = subscribe(user, (value) => value);
+      function getKeywordsOrdered(keywords) {
+        console.log(keywords);
+        const orderedMap = Object.entries(keywords).sort((a, b) => b[1] - a[1]);
+        myKeywords.set(orderedMap);
+        console.log(orderedMap.slice(0, 50));
+      }
+      $thisUser && console.warn($thisUser);
+      $thisUser && getKeywordsOrdered($thisUser.keywordsMap);
+      $$unsubscribe_thisUser();
       $$unsubscribe_page();
       $$unsubscribe_user();
       return `<body>${slots.default ? slots.default({}) : ``}</body>`;
@@ -48198,7 +59775,7 @@ var init__ = __esm({
     init_shims();
     index = 0;
     component = async () => component_cache ??= (await Promise.resolve().then(() => (init_layout_svelte(), layout_svelte_exports))).default;
-    imports = ["_app/immutable/nodes/0.a62ba675.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js", "_app/immutable/chunks/firebase.38a9430e.js", "_app/immutable/chunks/singletons.dac3fcc0.js", "_app/immutable/chunks/navigation.d7b086aa.js", "_app/immutable/chunks/stores.4fdc66c2.js", "_app/immutable/chunks/stores.5cc309cd.js"];
+    imports = ["_app/immutable/nodes/0.54e71c23.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js", "_app/immutable/chunks/firebase.3f2fcf9b.js", "_app/immutable/chunks/singletons.4445e5e9.js", "_app/immutable/chunks/navigation.1729eb6f.js", "_app/immutable/chunks/stores.d4b2ff84.js", "_app/immutable/chunks/stores.c4685803.js"];
     stylesheets = ["_app/immutable/assets/0.05eed45e.css"];
     fonts = [];
   }
@@ -48214,7 +59791,7 @@ var init_error_svelte = __esm({
   ".svelte-kit/output/server/entries/fallbacks/error.svelte.js"() {
     init_shims();
     init_ssr();
-    init_stores();
+    init_stores2();
     Error2 = create_ssr_component(($$result, $$props, $$bindings, slots) => {
       let $page, $$unsubscribe_page;
       $$unsubscribe_page = subscribe(page, (value) => $page = value);
@@ -48239,24 +59816,9 @@ var init__2 = __esm({
     init_shims();
     index2 = 1;
     component2 = async () => component_cache2 ??= (await Promise.resolve().then(() => (init_error_svelte(), error_svelte_exports))).default;
-    imports2 = ["_app/immutable/nodes/1.b9c923ff.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js", "_app/immutable/chunks/stores.5cc309cd.js", "_app/immutable/chunks/singletons.dac3fcc0.js"];
+    imports2 = ["_app/immutable/nodes/1.bd68d5f1.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js", "_app/immutable/chunks/stores.c4685803.js", "_app/immutable/chunks/singletons.4445e5e9.js"];
     stylesheets2 = [];
     fonts2 = [];
-  }
-});
-
-// .svelte-kit/output/server/chunks/stores2.js
-var scrollY, initialState, historyStore;
-var init_stores2 = __esm({
-  ".svelte-kit/output/server/chunks/stores2.js"() {
-    init_shims();
-    init_index2();
-    scrollY = writable(0);
-    initialState = {
-      history: [],
-      currentIndex: -1
-    };
-    historyStore = writable(initialState);
   }
 });
 
@@ -48270,8 +59832,8 @@ var init_layout_svelte2 = __esm({
   ".svelte-kit/output/server/entries/pages/(app)/_layout.svelte.js"() {
     init_shims();
     init_ssr();
-    init_stores2();
     init_stores();
+    init_stores2();
     init_firebase();
     bellSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`;
     arrowSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>`;
@@ -48282,29 +59844,34 @@ var init_layout_svelte2 = __esm({
     peopleSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-2"><path d="M14 19a6 6 0 0 0-12 0"/><circle cx="8" cy="9" r="4"/><path d="M22 19a6 6 0 0 0-6-6 4 4 0 1 0 0-8"/></svg>`;
     folderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-closed"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M2 10h20"/></svg>`;
     css = {
-      code: ".container.svelte-dfeus1.svelte-dfeus1{display:flex;flex-direction:row;height:100vh;width:100%;overflow:hidden}.left-side.svelte-dfeus1.svelte-dfeus1{display:flex;flex-direction:column;padding:12px;width:220px;min-width:220px;gap:4px;height:100%;background-color:#ffffff;box-shadow:0 0 10px rgba(0, 0, 0, 0.2);z-index:11}button.svelte-dfeus1.svelte-dfeus1{border:none;background-color:white;outline:none}.nav-btn.svelte-dfeus1.svelte-dfeus1{display:flex;padding:0 4px;font-size:18px;height:40px;align-items:center;border-radius:8px;color:black !important;transition:transform 0.1s ease-in-out;gap:8px}.nav-btn.svelte-dfeus1.svelte-dfeus1:not(.selected):hover{background-color:#f2f2f2;user-select:none}.nav-btn.svelte-dfeus1.svelte-dfeus1:active{background-color:#e6e6e6;transform:scale(0.98)}.selected.svelte-dfeus1.svelte-dfeus1{background-color:#e6e6e6}.right-side.svelte-dfeus1.svelte-dfeus1{display:flex;position:relative;flex-direction:column;height:100%;width:100%;overflow-x:hidden}.top-bar.svelte-dfeus1.svelte-dfeus1{position:sticky;top:0;display:flex;align-items:center;height:60px;width:100%;background-color:white;padding:8px;gap:8px;z-index:10}.search-input.svelte-dfeus1.svelte-dfeus1{padding:12px;border-radius:12px;border:none;outline:none;font-size:18px;width:100%;height:100%;box-shadow:0 0 10px rgba(0, 0, 0, 0.2)}.back.svelte-dfeus1.svelte-dfeus1,.forward.svelte-dfeus1.svelte-dfeus1{display:flex;height:100%;aspect-ratio:1;border-radius:8px;background-color:white;box-shadow:0 0 10px rgba(0, 0, 0, 0.2);color:rgb(75, 75, 75);border:none;transition:transform 0.1s ease-in-out, scale 0.1s ease-in-out;&:hover {\n      cursor: pointer;\n      color: black;\n    };&:active {\n      background-color: rgb(250, 250, 250);\n    };& span:hover {\n      background-color: transparent;\n    }}.forward.svelte-dfeus1.svelte-dfeus1{transform:rotate(180deg)}.profile-picture.svelte-dfeus1.svelte-dfeus1{display:flex;height:100%;aspect-ratio:1;border-radius:50%;transition:transform 0.1s ease-in-out;& img {\n      height: 100%;\n      border-radius: 50%;\n      aspect-ratio: 1;\n      object-fit: cover;\n    }}.profile-picture.svelte-dfeus1.svelte-dfeus1:hover{cursor:pointer;transform:scale(1.05)}.profile-picture.svelte-dfeus1.svelte-dfeus1:active{transform:scale(1.03)}.icon.svelte-dfeus1.svelte-dfeus1{display:flex;height:100%;align-items:center;justify-content:center;aspect-ratio:1;border-radius:50%;transition:background-color 0.1s ease-in-out;& span {\n      display: flex;\n      height: 100%;\n      align-items: center;\n      justify-content: center;\n      aspect-ratio: 1;\n      scale: 1.4;\n      border-radius: 50%;\n      transition: transform 0.1s ease-in-out;\n    }}.icon.svelte-dfeus1.svelte-dfeus1:hover{cursor:pointer;background-color:rgb(232, 232, 232)}.icon.svelte-dfeus1:active span.svelte-dfeus1{transform:scale(0.9)}.logo-container.svelte-dfeus1.svelte-dfeus1{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;background-color:rgb(237, 237, 237);transition:transform 0.1s ease-in-out;& img {\n      height: 40px;\n      aspect-ratio: 1;\n      object-fit: cover;\n    };& p {\n      font-size: 24px;\n      font-weight: 600;\n    }}.logout.svelte-dfeus1.svelte-dfeus1{display:flex;align-items:center;justify-content:center;height:40px;border-radius:8px;margin-top:auto;background-color:rgb(237, 237, 237);transition:transform 0.1s ease-in-out;&:hover {\n      cursor: pointer;\n      background-color: rgb(232, 232, 232);\n    };&:active {\n      transform: scale(0.98);\n    }}",
+      code: ".container.svelte-j9qu5.svelte-j9qu5{display:flex;flex-direction:row;height:100vh;width:100%;overflow:hidden}.left-side.svelte-j9qu5.svelte-j9qu5{display:flex;flex-direction:column;padding:12px;width:220px;min-width:220px;gap:4px;height:100%;background-color:#ffffff;box-shadow:0 0 10px rgba(0, 0, 0, 0.2);z-index:11}button.svelte-j9qu5.svelte-j9qu5{border:none;background-color:white;outline:none}.nav-btn.svelte-j9qu5.svelte-j9qu5{display:flex;padding:0 4px;font-size:18px;height:40px;align-items:center;border-radius:8px;color:black !important;transition:transform 0.1s ease-in-out;gap:8px}.nav-btn.svelte-j9qu5.svelte-j9qu5:not(.selected):hover{background-color:#f2f2f2;user-select:none}.nav-btn.svelte-j9qu5.svelte-j9qu5:active{background-color:#e6e6e6;transform:scale(0.98)}.selected.svelte-j9qu5.svelte-j9qu5{background-color:#e6e6e6}.right-side.svelte-j9qu5.svelte-j9qu5{display:flex;position:relative;flex-direction:column;height:100%;width:100%;overflow-x:hidden}.top-bar.svelte-j9qu5.svelte-j9qu5{position:sticky;top:0;display:flex;align-items:center;height:60px;width:100%;background-color:white;padding:8px;gap:8px;z-index:10}.search-input.svelte-j9qu5.svelte-j9qu5{padding:12px;border-radius:12px;border:none;outline:none;font-size:18px;width:100%;height:100%;box-shadow:0 0 10px rgba(0, 0, 0, 0.2)}.back.svelte-j9qu5.svelte-j9qu5,.forward.svelte-j9qu5.svelte-j9qu5{display:flex;height:100%;aspect-ratio:1;border-radius:8px;background-color:white;box-shadow:0 0 10px rgba(0, 0, 0, 0.2);color:rgb(75, 75, 75);border:none;transition:transform 0.1s ease-in-out, scale 0.1s ease-in-out;&:hover {\r\n      cursor: pointer;\r\n      color: black;\r\n    };&:active {\r\n      background-color: rgb(250, 250, 250);\r\n    };& span:hover {\r\n      background-color: transparent;\r\n    }}.forward.svelte-j9qu5.svelte-j9qu5{transform:rotate(180deg)}.profile-picture.svelte-j9qu5.svelte-j9qu5{display:flex;height:100%;aspect-ratio:1;border-radius:50%;transition:transform 0.1s ease-in-out;& img {\r\n      height: 100%;\r\n      border-radius: 50%;\r\n      aspect-ratio: 1;\r\n      object-fit: cover;\r\n    }}.profile-picture.svelte-j9qu5.svelte-j9qu5:hover{cursor:pointer;transform:scale(1.05)}.profile-picture.svelte-j9qu5.svelte-j9qu5:active{transform:scale(1.03)}.icon.svelte-j9qu5.svelte-j9qu5{display:flex;height:100%;align-items:center;justify-content:center;aspect-ratio:1;border-radius:50%;transition:background-color 0.1s ease-in-out;& span {\r\n      display: flex;\r\n      height: 100%;\r\n      align-items: center;\r\n      justify-content: center;\r\n      aspect-ratio: 1;\r\n      scale: 1.4;\r\n      border-radius: 50%;\r\n      transition: transform 0.1s ease-in-out;\r\n    }}.icon.svelte-j9qu5.svelte-j9qu5:hover{cursor:pointer;background-color:rgb(232, 232, 232)}.icon.svelte-j9qu5:active span.svelte-j9qu5{transform:scale(0.9)}.logo-container.svelte-j9qu5.svelte-j9qu5{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;background-color:rgb(237, 237, 237);transition:transform 0.1s ease-in-out;& img {\r\n      height: 40px;\r\n      aspect-ratio: 1;\r\n      object-fit: cover;\r\n    };& p {\r\n      font-size: 24px;\r\n      font-weight: 600;\r\n    }}.logout.svelte-j9qu5.svelte-j9qu5{display:flex;align-items:center;justify-content:center;height:40px;border-radius:8px;margin-top:auto;background-color:rgb(237, 237, 237);transition:transform 0.1s ease-in-out;&:hover {\r\n      cursor: pointer;\r\n      background-color: rgb(232, 232, 232);\r\n    };&:active {\r\n      transform: scale(0.98);\r\n    }}.reset.svelte-j9qu5.svelte-j9qu5{display:flex;align-items:center;justify-content:center;height:40px;border-radius:8px;background-color:rgb(216, 113, 113);transition:transform 0.1s ease-in-out;&:hover {\r\n      cursor: pointer;\r\n      background-color: rgb(232, 232, 232);\r\n    };&:active {\r\n      transform: scale(0.98);\r\n    }}.keywords.svelte-j9qu5.svelte-j9qu5{display:flex;flex-direction:column;gap:2px;& div {\r\n      display: flex;\r\n      align-items: center;\r\n      justify-content: space-between;\r\n      height: 40px;\r\n      width: 100%;\r\n      border-radius: 8px;\r\n      padding: 0 8px;\r\n\r\n      text-overflow: ellipsis;\r\n      overflow: hidden;\r\n\r\n      /* margin-top: auto; */\r\n      background-color: rgb(237, 237, 237);\r\n      transition: transform 0.1s ease-in-out;\r\n\r\n      &:hover {\r\n        cursor: pointer;\r\n        background-color: rgb(232, 232, 232);\r\n      }\r\n      &:active {\r\n        transform: scale(0.98);\r\n      }\r\n    }}",
       map: null
     };
     Layout2 = create_ssr_component(($$result, $$props, $$bindings, slots) => {
       let currentPage;
       let $page, $$unsubscribe_page;
       let $user, $$unsubscribe_user;
+      let $myKeywords, $$unsubscribe_myKeywords;
       let $historyStore, $$unsubscribe_historyStore;
       $$unsubscribe_page = subscribe(page, (value) => $page = value);
       $$unsubscribe_user = subscribe(user, (value) => $user = value);
+      $$unsubscribe_myKeywords = subscribe(myKeywords, (value) => $myKeywords = value);
       $$unsubscribe_historyStore = subscribe(historyStore, (value) => $historyStore = value);
       $$result.css.add(css);
       currentPage = $page.url.pathname;
       $$unsubscribe_page();
       $$unsubscribe_user();
+      $$unsubscribe_myKeywords();
       $$unsubscribe_historyStore();
-      return `<div class="container svelte-dfeus1"><div class="left-side svelte-dfeus1"><div class="logo-container svelte-dfeus1" data-svelte-h="svelte-foa1q4"><img src="/logo252.png" alt=""> <p>GitTogether</p></div> <button class="${["nav-btn svelte-dfeus1", currentPage == "/home" ? "selected" : ""].join(" ").trim()}"><span class="icon svelte-dfeus1"><!-- HTML_TAG_START -->${homeSvg}<!-- HTML_TAG_END --></span> Home</button> <button class="${["nav-btn svelte-dfeus1", currentPage == "/my-projects" ? "selected" : ""].join(" ").trim()}"><span class="icon svelte-dfeus1"><!-- HTML_TAG_START -->${folderOpenDotSvg}<!-- HTML_TAG_END --></span>My Projects</button> <button class="${["nav-btn svelte-dfeus1", currentPage == "/discover" ? "selected" : ""].join(" ").trim()}"><span class="icon svelte-dfeus1"><!-- HTML_TAG_START -->${compassSvg}<!-- HTML_TAG_END --></span>Discover</button> <button class="${["nav-btn svelte-dfeus1", currentPage == "/messages" ? "selected" : ""].join(" ").trim()}"><span class="icon svelte-dfeus1"><!-- HTML_TAG_START -->${messageCircleSvg}<!-- HTML_TAG_END --></span>Messages</button> <button class="${["nav-btn svelte-dfeus1", currentPage == "/discussions" ? "selected" : ""].join(" ").trim()}"><span class="icon svelte-dfeus1"><!-- HTML_TAG_START -->${peopleSvg}<!-- HTML_TAG_END --></span>Discussions</button> <button class="${["nav-btn svelte-dfeus1", currentPage == "/project" ? "selected" : ""].join(" ").trim()}"><span class="icon svelte-dfeus1"><!-- HTML_TAG_START -->${folderSvg}<!-- HTML_TAG_END --></span>Sample Project</button> ${$user ? `<button class="logout svelte-dfeus1" data-svelte-h="svelte-1iocbp0">Logout</button>` : ``}</div> <div class="right-side svelte-dfeus1"><div class="top-bar svelte-dfeus1"><button class="${[
-        "back svelte-dfeus1",
+      return `<div class="container svelte-j9qu5"><div class="left-side svelte-j9qu5"><div class="logo-container svelte-j9qu5" data-svelte-h="svelte-foa1q4"><img src="/logo252.png" alt=""> <p>GitTogether</p></div> <button class="${["nav-btn svelte-j9qu5", currentPage == "/home" ? "selected" : ""].join(" ").trim()}"><span class="icon svelte-j9qu5"><!-- HTML_TAG_START -->${homeSvg}<!-- HTML_TAG_END --></span> Home</button> <button class="${["nav-btn svelte-j9qu5", currentPage == "/my-projects" ? "selected" : ""].join(" ").trim()}"><span class="icon svelte-j9qu5"><!-- HTML_TAG_START -->${folderOpenDotSvg}<!-- HTML_TAG_END --></span>My Projects</button> <button class="${["nav-btn svelte-j9qu5", currentPage == "/discover" ? "selected" : ""].join(" ").trim()}"><span class="icon svelte-j9qu5"><!-- HTML_TAG_START -->${compassSvg}<!-- HTML_TAG_END --></span>Discover</button> <button class="${["nav-btn svelte-j9qu5", currentPage == "/messages" ? "selected" : ""].join(" ").trim()}"><span class="icon svelte-j9qu5"><!-- HTML_TAG_START -->${messageCircleSvg}<!-- HTML_TAG_END --></span>Messages</button> <button class="${["nav-btn svelte-j9qu5", currentPage == "/discussions" ? "selected" : ""].join(" ").trim()}"><span class="icon svelte-j9qu5"><!-- HTML_TAG_START -->${peopleSvg}<!-- HTML_TAG_END --></span>Discussions</button> <button class="${["nav-btn svelte-j9qu5", currentPage == "/project" ? "selected" : ""].join(" ").trim()}"><span class="icon svelte-j9qu5"><!-- HTML_TAG_START -->${folderSvg}<!-- HTML_TAG_END --></span>Sample Project</button> ${$user ? `<button class="logout svelte-j9qu5" data-svelte-h="svelte-1oldctw">Logout</button> <div class="keywords svelte-j9qu5"><h3 data-svelte-h="svelte-ksk5kg">Keywords</h3> ${each($myKeywords.slice(0, 10), (keyword) => {
+        return `<div><p>${escape(keyword[0])}</p> <p>${escape(keyword[1])}</p> </div>`;
+      })}</div> <button class="reset svelte-j9qu5" data-svelte-h="svelte-14pfd3k">Reset Keywords</button>` : ``}</div> <div class="right-side svelte-j9qu5"><div class="top-bar svelte-j9qu5"><button class="${[
+        "back svelte-j9qu5",
         $historyStore?.history.length == 1 || $historyStore?.currentIndex == 0 ? "unavailable" : ""
-      ].join(" ").trim()}"><span class="icon svelte-dfeus1"><!-- HTML_TAG_START -->${arrowSvg}<!-- HTML_TAG_END --></span></button> <button class="${[
-        "forward svelte-dfeus1",
+      ].join(" ").trim()}"><span class="icon svelte-j9qu5"><!-- HTML_TAG_START -->${arrowSvg}<!-- HTML_TAG_END --></span></button> <button class="${[
+        "forward svelte-j9qu5",
         $historyStore?.currentIndex == $historyStore?.history.length - 1 ? "unavailable" : ""
-      ].join(" ").trim()}"><span class="icon svelte-dfeus1"><!-- HTML_TAG_START -->${arrowSvg}<!-- HTML_TAG_END --></span></button> <input type="text" class="search-input svelte-dfeus1" placeholder="Search"> <div class="icon svelte-dfeus1"><span class="svelte-dfeus1"><!-- HTML_TAG_START -->${bellSvg}<!-- HTML_TAG_END --></span></div> ${$user ? `<div class="profile-picture svelte-dfeus1"><img src="${"https://picsum.photos/seed/$" + escape($user?.uid, true) + "/120/100"}" alt=""></div>` : `<button class="nav-btn svelte-dfeus1" data-svelte-h="svelte-17sshlk">Login</button>`}</div> ${slots.default ? slots.default({}) : ``}</div> </div>`;
+      ].join(" ").trim()}"><span class="icon svelte-j9qu5"><!-- HTML_TAG_START -->${arrowSvg}<!-- HTML_TAG_END --></span></button> <input type="text" class="search-input svelte-j9qu5" placeholder="Search"> <div class="icon svelte-j9qu5"><span class="svelte-j9qu5"><!-- HTML_TAG_START -->${bellSvg}<!-- HTML_TAG_END --></span></div> ${$user ? `<div class="profile-picture svelte-j9qu5"><img src="${"https://picsum.photos/seed/$" + escape($user?.uid, true) + "/120/100"}" alt=""></div>` : `<button class="nav-btn svelte-j9qu5" data-svelte-h="svelte-17sshlk">Login</button>`}</div> ${slots.default ? slots.default({}) : ``}</div> </div>`;
     });
   }
 });
@@ -48324,8 +59891,8 @@ var init__3 = __esm({
     init_shims();
     index3 = 2;
     component3 = async () => component_cache3 ??= (await Promise.resolve().then(() => (init_layout_svelte2(), layout_svelte_exports2))).default;
-    imports3 = ["_app/immutable/nodes/2.c2abc640.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js", "_app/immutable/chunks/svgs.7921f4b5.js", "_app/immutable/chunks/stores.4fdc66c2.js", "_app/immutable/chunks/singletons.dac3fcc0.js", "_app/immutable/chunks/navigation.d7b086aa.js", "_app/immutable/chunks/stores.5cc309cd.js", "_app/immutable/chunks/firebase.38a9430e.js"];
-    stylesheets3 = ["_app/immutable/assets/2.e2afb029.css"];
+    imports3 = ["_app/immutable/nodes/2.dfa3fc4e.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js", "_app/immutable/chunks/each.e59479a4.js", "_app/immutable/chunks/svgs.7921f4b5.js", "_app/immutable/chunks/stores.d4b2ff84.js", "_app/immutable/chunks/singletons.4445e5e9.js", "_app/immutable/chunks/navigation.1729eb6f.js", "_app/immutable/chunks/stores.c4685803.js", "_app/immutable/chunks/firebase.3f2fcf9b.js"];
+    stylesheets3 = ["_app/immutable/assets/2.5da270ba.css"];
     fonts3 = [];
   }
 });
@@ -48340,25 +59907,20 @@ var init_layout_svelte3 = __esm({
   ".svelte-kit/output/server/entries/pages/(auth)/_layout.svelte.js"() {
     init_shims();
     init_ssr();
-    init_firebase();
-    init_stores();
+    init_stores2();
     css2 = {
       code: ".container.svelte-74rbhq.svelte-74rbhq{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;width:100%;gap:10px;border:1px solid red}.sub-container.svelte-74rbhq.svelte-74rbhq{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}.row.svelte-74rbhq.svelte-74rbhq{display:flex;flex-direction:row;align-items:center;width:100%;justify-content:space-between;padding:0 40px;font-size:22px}.row.svelte-74rbhq button.svelte-74rbhq{font-size:22px;font-weight:bold;border:none;background-color:transparent;cursor:pointer;transition:transform 0.1s ease-in-out}.selected.svelte-74rbhq.svelte-74rbhq{border-bottom:2px solid black !important}",
       map: null
     };
     Layout3 = create_ssr_component(($$result, $$props, $$bindings, slots) => {
       let $page, $$unsubscribe_page;
-      let $user, $$unsubscribe_user;
       $$unsubscribe_page = subscribe(page, (value) => $page = value);
-      $$unsubscribe_user = subscribe(user, (value) => $user = value);
       $$result.css.add(css2);
       {
         console.log($page);
       }
       $$unsubscribe_page();
-      $$unsubscribe_user();
-      return `<div class="container svelte-74rbhq"><div class="sub-container svelte-74rbhq"><h2>Welcome
-      ${$user ? `${escape($user.email)}` : `Stranger!`}</h2> ${$user ? `<h3>UID: ${escape($user.uid)}</h3>` : ``} <div class="row svelte-74rbhq"><button class="${["svelte-74rbhq", $page.url.pathname.includes("/signup") ? "selected" : ""].join(" ").trim()}" data-svelte-h="svelte-1vdr8ro">Sign Up</button> <button class="${["svelte-74rbhq", $page.url.pathname.includes("/login") ? "selected" : ""].join(" ").trim()}" data-svelte-h="svelte-1iaxpdp">Login</button></div> ${slots.default ? slots.default({}) : ``}</div> </div>`;
+      return `<div class="container svelte-74rbhq"><div class="sub-container svelte-74rbhq"><div class="row svelte-74rbhq"><button class="${["svelte-74rbhq", $page.url.pathname.includes("/signup") ? "selected" : ""].join(" ").trim()}" data-svelte-h="svelte-1vdr8ro">Sign Up</button> <button class="${["svelte-74rbhq", $page.url.pathname.includes("/login") ? "selected" : ""].join(" ").trim()}" data-svelte-h="svelte-1iaxpdp">Login</button></div> ${slots.default ? slots.default({}) : ``}</div> </div>`;
     });
   }
 });
@@ -48378,7 +59940,7 @@ var init__4 = __esm({
     init_shims();
     index4 = 3;
     component4 = async () => component_cache4 ??= (await Promise.resolve().then(() => (init_layout_svelte3(), layout_svelte_exports3))).default;
-    imports4 = ["_app/immutable/nodes/3.08d80fdd.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js", "_app/immutable/chunks/firebase.38a9430e.js", "_app/immutable/chunks/singletons.dac3fcc0.js", "_app/immutable/chunks/navigation.d7b086aa.js", "_app/immutable/chunks/stores.5cc309cd.js"];
+    imports4 = ["_app/immutable/nodes/3.7e1d8580.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js", "_app/immutable/chunks/stores.c4685803.js", "_app/immutable/chunks/singletons.4445e5e9.js", "_app/immutable/chunks/navigation.1729eb6f.js"];
     stylesheets4 = ["_app/immutable/assets/3.f861a8a4.css"];
     fonts4 = [];
   }
@@ -48401,7 +59963,7 @@ var init_page_svelte = __esm({
     };
     Page = create_ssr_component(($$result, $$props, $$bindings, slots) => {
       $$result.css.add(css3);
-      return `<div class="container svelte-p1alkv"><button data-svelte-h="svelte-1vyer42">TEST</button> </div>`;
+      return `<div class="container svelte-p1alkv" data-svelte-h="svelte-z9w4z4"></div>`;
     });
   }
 });
@@ -48421,7 +59983,7 @@ var init__5 = __esm({
     init_shims();
     index5 = 4;
     component5 = async () => component_cache5 ??= (await Promise.resolve().then(() => (init_page_svelte(), page_svelte_exports))).default;
-    imports5 = ["_app/immutable/nodes/4.1878f6c5.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js", "_app/immutable/chunks/firebase.38a9430e.js", "_app/immutable/chunks/singletons.dac3fcc0.js", "_app/immutable/chunks/navigation.d7b086aa.js"];
+    imports5 = ["_app/immutable/nodes/4.c8482d2b.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js", "_app/immutable/chunks/firebase.3f2fcf9b.js", "_app/immutable/chunks/singletons.4445e5e9.js", "_app/immutable/chunks/navigation.1729eb6f.js"];
     stylesheets5 = ["_app/immutable/assets/4.b8c8d7e4.css"];
     fonts5 = [];
   }
@@ -48458,7 +60020,7 @@ var init__6 = __esm({
     init_shims();
     index6 = 5;
     component6 = async () => component_cache6 ??= (await Promise.resolve().then(() => (init_page_svelte2(), page_svelte_exports2))).default;
-    imports6 = ["_app/immutable/nodes/5.77b9a36f.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js"];
+    imports6 = ["_app/immutable/nodes/5.8056f7c7.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js"];
     stylesheets6 = [];
     fonts6 = [];
   }
@@ -48495,7 +60057,7 @@ var init__7 = __esm({
     init_shims();
     index7 = 6;
     component7 = async () => component_cache7 ??= (await Promise.resolve().then(() => (init_page_svelte3(), page_svelte_exports3))).default;
-    imports7 = ["_app/immutable/nodes/6.77b9a36f.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js"];
+    imports7 = ["_app/immutable/nodes/6.8056f7c7.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js"];
     stylesheets7 = [];
     fonts7 = [];
   }
@@ -48555,16 +60117,20 @@ var init_page_svelte4 = __esm({
     init_shims();
     init_ssr();
     init_firebase();
+    init_stores();
     css4 = {
-      code: ".container.svelte-7qsgnx{display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));grid-auto-rows:1fr;height:100%;gap:8px;padding:12px}.project-container.svelte-7qsgnx{display:grid;grid-template-rows:auto 1fr;text-align:left;height:100%;width:100%;cursor:pointer;border-radius:16px;box-shadow:0 0 10px rgba(0, 0, 0, 0.22);aspect-ratio:16 / 9;padding:8px;gap:4px;transition:box-shadow 0.2s ease-in-out;& img {\n      min-width: 100%;\n      width: 100%;\n      \n      /* height: 100%; */\n      border-radius: 8px;\n      object-fit: cover;\n      aspect-ratio: 16 / 9;\n    };&:hover {\n      box-shadow: 0 0 10px rgba(0, 0, 0, 0.42);\n    }}.skills.svelte-7qsgnx{display:flex;flex-wrap:wrap;gap:4px}.skill.svelte-7qsgnx{padding:4px 8px;border-radius:6px;font-size:14px}.details.svelte-7qsgnx{display:flex;flex-direction:column;padding:4px;gap:4px}",
+      code: ".container.svelte-7qsgnx{display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));grid-auto-rows:1fr;height:100%;gap:8px;padding:12px}.project-container.svelte-7qsgnx{display:grid;grid-template-rows:auto 1fr;text-align:left;height:100%;width:100%;cursor:pointer;border-radius:16px;box-shadow:0 0 10px rgba(0, 0, 0, 0.22);aspect-ratio:16 / 9;padding:8px;gap:4px;transition:box-shadow 0.2s ease-in-out;& img {\r\n      min-width: 100%;\r\n      width: 100%;\r\n      \r\n      /* height: 100%; */\r\n      border-radius: 8px;\r\n      object-fit: cover;\r\n      aspect-ratio: 16 / 9;\r\n    };&:hover {\r\n      box-shadow: 0 0 10px rgba(0, 0, 0, 0.42);\r\n    }}.skills.svelte-7qsgnx{display:flex;flex-wrap:wrap;gap:4px}.skill.svelte-7qsgnx{padding:4px 8px;border-radius:6px;font-size:14px}.details.svelte-7qsgnx{display:flex;flex-direction:column;padding:4px;gap:4px}",
       map: null
     };
     Page4 = create_ssr_component(($$result, $$props, $$bindings, slots) => {
+      let $$unsubscribe_myKeywords;
+      $$unsubscribe_myKeywords = subscribe(myKeywords, (value) => value);
       let projects = [];
       $$result.css.add(css4);
       {
         console.log(projects);
       }
+      $$unsubscribe_myKeywords();
       return `<div class="container svelte-7qsgnx">${each(projects, (project) => {
         return `<button class="project-container svelte-7qsgnx"><img${add_attribute("src", `https://picsum.photos/seed/${project.project_id}/320/180`, 0)} alt=""> <div class="details svelte-7qsgnx"><h3>${escape(project.project_name)}</h3> <p>${escape(project.brief_description)}</p> <div class="skills svelte-7qsgnx">${each(project.skills_needed, (skill) => {
           return `<div class="skill svelte-7qsgnx" style="${"background-color: " + escape(stringToColor(skill).bg, true) + "; color: " + escape(stringToColor(skill).text, true)}">${escape(skill)} </div>`;
@@ -48589,7 +60155,7 @@ var init__8 = __esm({
     init_shims();
     index8 = 7;
     component8 = async () => component_cache8 ??= (await Promise.resolve().then(() => (init_page_svelte4(), page_svelte_exports4))).default;
-    imports8 = ["_app/immutable/nodes/7.ecccba15.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/colorHelper.c678d88e.js", "_app/immutable/chunks/index.a94edd2d.js", "_app/immutable/chunks/firebase.38a9430e.js", "_app/immutable/chunks/singletons.dac3fcc0.js", "_app/immutable/chunks/navigation.d7b086aa.js"];
+    imports8 = ["_app/immutable/nodes/7.3f03e85d.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/each.e59479a4.js", "_app/immutable/chunks/index.3d8f63c0.js", "_app/immutable/chunks/colorHelper.5a4a377d.js", "_app/immutable/chunks/firebase.3f2fcf9b.js", "_app/immutable/chunks/singletons.4445e5e9.js", "_app/immutable/chunks/navigation.1729eb6f.js", "_app/immutable/chunks/stores.d4b2ff84.js"];
     stylesheets8 = ["_app/immutable/assets/7.3d798a78.css"];
     fonts8 = [];
   }
@@ -48626,7 +60192,7 @@ var init__9 = __esm({
     init_shims();
     index9 = 8;
     component9 = async () => component_cache9 ??= (await Promise.resolve().then(() => (init_page_svelte5(), page_svelte_exports5))).default;
-    imports9 = ["_app/immutable/nodes/8.77b9a36f.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js"];
+    imports9 = ["_app/immutable/nodes/8.8056f7c7.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js"];
     stylesheets9 = [];
     fonts9 = [];
   }
@@ -48663,7 +60229,7 @@ var init__10 = __esm({
     init_shims();
     index10 = 9;
     component10 = async () => component_cache10 ??= (await Promise.resolve().then(() => (init_page_svelte6(), page_svelte_exports6))).default;
-    imports10 = ["_app/immutable/nodes/9.77b9a36f.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js"];
+    imports10 = ["_app/immutable/nodes/9.8056f7c7.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js"];
     stylesheets10 = [];
     fonts10 = [];
   }
@@ -48679,9 +60245,9 @@ var init_page_svelte7 = __esm({
   ".svelte-kit/output/server/entries/pages/(app)/project/_page.svelte.js"() {
     init_shims();
     init_ssr();
-    init_stores2();
+    init_stores();
     css5 = {
-      code: '.container.svelte-x7yhka{display:flex;flex-direction:column;position:relative}.poster.svelte-x7yhka{position:fixed;top:60px;left:0;width:100%;height:min(calc(300px + var(--scrollY)), 100vh);object-fit:cover;object-position:center;z-index:-1}.details.svelte-x7yhka{position:relative;width:100%;background:rgba(255, 255, 255, 0.857);box-shadow:0 4px 30px rgba(0, 0, 0, 0.1);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);margin-top:300px;display:flex;flex-direction:row;padding:36px;gap:24px;min-height:calc(100vh - 60px);font-size:16px}.project-name.svelte-x7yhka{font-weight:800}.brief-description.svelte-x7yhka{font-size:20px;font-weight:400}.skills.svelte-x7yhka{display:flex;flex-wrap:wrap;gap:4px}.skill.svelte-x7yhka{padding:4px 8px;border-radius:6px;font-size:14px}.left.svelte-x7yhka,.right.svelte-x7yhka{display:flex;flex-direction:column;gap:16px;& > div:not(:first-child) {\n      display: flex;\n      flex-direction: column;\n      gap: 8px;\n    }}.left.svelte-x7yhka{font-size:18px}hr.svelte-x7yhka{border:none;border-bottom:1px solid #d8d7d7}.project-owner.svelte-x7yhka,.chat.svelte-x7yhka{display:flex;flex-direction:row !important;align-items:center;gap:16px;border-radius:8px;justify-content:space-between;overflow:hidden;& > img {\n      max-height: 50px; \n      max-width: 50px;\n      aspect-ratio: 1;\n      border-radius: 50%;\n      object-fit: cover;\n    };& pre {\n      font-size: 18px;\n      text-overflow: ellipsis;\n      overflow: hidden;\n    }}.chat.svelte-x7yhka{background-color:rgb(246, 246, 246);padding:16px;transition:transform 0.1s ease-in-out}.chat.svelte-x7yhka:hover{cursor:pointer;background-color:rgb(242, 242, 242)}.chat.svelte-x7yhka:active{transform:scale(0.95)}.members.svelte-x7yhka{font-size:14px !important;color:rgb(117, 117, 117)}pre.svelte-x7yhka{white-space:pre-wrap;font-family:"Peak Sans", sans-serif;font-size:18px}',
+      code: '.container.svelte-x7yhka{display:flex;flex-direction:column;position:relative}.poster.svelte-x7yhka{position:fixed;top:60px;left:0;width:100%;height:min(calc(300px + var(--scrollY)), 100vh);object-fit:cover;object-position:center;z-index:-1}.details.svelte-x7yhka{position:relative;width:100%;background:rgba(255, 255, 255, 0.857);box-shadow:0 4px 30px rgba(0, 0, 0, 0.1);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);margin-top:300px;display:flex;flex-direction:row;padding:36px;gap:24px;min-height:calc(100vh - 60px);font-size:16px}.project-name.svelte-x7yhka{font-weight:800}.brief-description.svelte-x7yhka{font-size:20px;font-weight:400}.skills.svelte-x7yhka{display:flex;flex-wrap:wrap;gap:4px}.skill.svelte-x7yhka{padding:4px 8px;border-radius:6px;font-size:14px}.left.svelte-x7yhka,.right.svelte-x7yhka{display:flex;flex-direction:column;gap:16px;& > div:not(:first-child) {\r\n      display: flex;\r\n      flex-direction: column;\r\n      gap: 8px;\r\n    }}.left.svelte-x7yhka{font-size:18px}hr.svelte-x7yhka{border:none;border-bottom:1px solid #d8d7d7}.project-owner.svelte-x7yhka,.chat.svelte-x7yhka{display:flex;flex-direction:row !important;align-items:center;gap:16px;border-radius:8px;justify-content:space-between;overflow:hidden;& > img {\r\n      max-height: 50px; \r\n      max-width: 50px;\r\n      aspect-ratio: 1;\r\n      border-radius: 50%;\r\n      object-fit: cover;\r\n    };& pre {\r\n      font-size: 18px;\r\n      text-overflow: ellipsis;\r\n      overflow: hidden;\r\n    }}.chat.svelte-x7yhka{background-color:rgb(246, 246, 246);padding:16px;transition:transform 0.1s ease-in-out}.chat.svelte-x7yhka:hover{cursor:pointer;background-color:rgb(242, 242, 242)}.chat.svelte-x7yhka:active{transform:scale(0.95)}.members.svelte-x7yhka{font-size:14px !important;color:rgb(117, 117, 117)}pre.svelte-x7yhka{white-space:pre-wrap;font-family:"Peak Sans", sans-serif;font-size:18px}',
       map: null
     };
     Page7 = create_ssr_component(($$result, $$props, $$bindings, slots) => {
@@ -48709,7 +60275,7 @@ var init__11 = __esm({
     init_shims();
     index11 = 10;
     component11 = async () => component_cache11 ??= (await Promise.resolve().then(() => (init_page_svelte7(), page_svelte_exports7))).default;
-    imports11 = ["_app/immutable/nodes/10.5194151a.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/colorHelper.c678d88e.js", "_app/immutable/chunks/index.a94edd2d.js", "_app/immutable/chunks/stores.4fdc66c2.js", "_app/immutable/chunks/singletons.dac3fcc0.js", "_app/immutable/chunks/navigation.d7b086aa.js", "_app/immutable/chunks/svgs.7921f4b5.js"];
+    imports11 = ["_app/immutable/nodes/10.073db309.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/each.e59479a4.js", "_app/immutable/chunks/index.3d8f63c0.js", "_app/immutable/chunks/colorHelper.5a4a377d.js", "_app/immutable/chunks/stores.d4b2ff84.js", "_app/immutable/chunks/singletons.4445e5e9.js", "_app/immutable/chunks/navigation.1729eb6f.js", "_app/immutable/chunks/svgs.7921f4b5.js"];
     stylesheets11 = ["_app/immutable/assets/10.b6503643.css"];
     fonts11 = [];
   }
@@ -48725,11 +60291,11 @@ var init_page_svelte8 = __esm({
   ".svelte-kit/output/server/entries/pages/(app)/project/_projectId_/_page.svelte.js"() {
     init_shims();
     init_ssr();
-    init_stores2();
     init_stores();
+    init_stores2();
     init_firebase();
     css6 = {
-      code: '.container.svelte-oja2tg{display:flex;flex-direction:column;position:relative}.poster.svelte-oja2tg{position:fixed;top:60px;left:0;width:100%;height:min(calc(300px + var(--scrollY)), 100vh);object-fit:cover;object-position:center;z-index:-1}.details.svelte-oja2tg{position:relative;width:100%;background:rgba(255, 255, 255, 0.857);box-shadow:0 4px 30px rgba(0, 0, 0, 0.1);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);margin-top:300px;display:flex;flex-direction:row;padding:36px;gap:24px;min-height:calc(100vh - 60px);font-size:16px}.project-name.svelte-oja2tg{font-weight:800}.brief-description.svelte-oja2tg{font-size:20px;font-weight:400}.skills.svelte-oja2tg{display:flex;flex-wrap:wrap;gap:4px}.skill.svelte-oja2tg{padding:4px 8px;border-radius:6px;font-size:14px}.left.svelte-oja2tg,.right.svelte-oja2tg{display:flex;flex-direction:column;gap:16px;& > div:not(:first-child) {\n      display: flex;\n      flex-direction: column;\n      gap: 8px;\n    }}.left.svelte-oja2tg{font-size:18px}hr.svelte-oja2tg{border:none;border-bottom:1px solid #d8d7d7}.project-owner.svelte-oja2tg,.chat.svelte-oja2tg{display:flex;flex-direction:row !important;align-items:center;gap:16px;border-radius:8px;justify-content:space-between;overflow:hidden;& > img {\n      max-height: 50px;\n      max-width: 50px;\n      aspect-ratio: 1;\n      border-radius: 50%;\n      object-fit: cover;\n    };& pre {\n      font-size: 18px;\n      text-overflow: ellipsis;\n      overflow: hidden;\n    }}.chat.svelte-oja2tg{background-color:rgb(246, 246, 246);padding:16px;transition:transform 0.1s ease-in-out}.chat.svelte-oja2tg:hover{cursor:pointer;background-color:rgb(242, 242, 242)}.chat.svelte-oja2tg:active{transform:scale(0.95)}.members.svelte-oja2tg{font-size:14px !important;color:rgb(117, 117, 117)}pre.svelte-oja2tg{white-space:pre-wrap;font-family:"Peak Sans", sans-serif;font-size:18px}',
+      code: '.container.svelte-s92md3{display:flex;flex-direction:column;position:relative}.poster.svelte-s92md3{position:fixed;top:60px;left:0;width:100%;height:min(calc(300px + var(--scrollY)), 100vh);object-fit:cover;object-position:center;z-index:-1}.details.svelte-s92md3{position:relative;width:100%;background:rgba(255, 255, 255, 0.857);box-shadow:0 4px 30px rgba(0, 0, 0, 0.1);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);margin-top:300px;display:flex;flex-direction:row;padding:36px;gap:24px;min-height:calc(100vh - 60px);font-size:16px}.project-name.svelte-s92md3{font-weight:800}.brief-description.svelte-s92md3{font-size:20px;font-weight:400}.skills.svelte-s92md3{display:flex;flex-wrap:wrap;gap:4px}.skill.svelte-s92md3{padding:4px 8px;border-radius:6px;font-size:14px}.left.svelte-s92md3,.right.svelte-s92md3{display:flex;flex-direction:column;gap:16px;& > div:not(:first-child) {\r\n      display: flex;\r\n      flex-direction: column;\r\n      gap: 8px;\r\n    }}.left.svelte-s92md3{font-size:18px}.right.svelte-s92md3{min-width:250px}hr.svelte-s92md3{border:none;border-bottom:1px solid #d8d7d7}.project-owner.svelte-s92md3,.chat.svelte-s92md3{display:flex;flex-direction:row !important;align-items:center;gap:16px;border-radius:8px;justify-content:space-between;overflow:hidden;& > img {\r\n      max-height: 50px;\r\n      max-width: 50px;\r\n      aspect-ratio: 1;\r\n      border-radius: 50%;\r\n      object-fit: cover;\r\n    };& pre {\r\n      font-size: 18px;\r\n      text-overflow: ellipsis;\r\n      overflow: hidden;\r\n    }}.chat.svelte-s92md3{background-color:rgb(246, 246, 246);padding:16px;transition:transform 0.1s ease-in-out}.chat.svelte-s92md3:hover{cursor:pointer;background-color:rgb(242, 242, 242)}.chat.svelte-s92md3:active{transform:scale(0.95)}.members.svelte-s92md3{font-size:14px !important;color:rgb(117, 117, 117)}pre.svelte-s92md3{white-space:pre-wrap;font-family:"Peak Sans", sans-serif;font-size:18px}',
       map: null
     };
     Page8 = create_ssr_component(($$result, $$props, $$bindings, slots) => {
@@ -48744,7 +60310,7 @@ var init_page_svelte8 = __esm({
       $$unsubscribe_user();
       $$unsubscribe_page();
       $$unsubscribe_scrollY();
-      return `<div class="container svelte-oja2tg">${``} </div>`;
+      return `<div class="container svelte-s92md3">${``} </div>`;
     });
   }
 });
@@ -48764,8 +60330,8 @@ var init__12 = __esm({
     init_shims();
     index12 = 11;
     component12 = async () => component_cache12 ??= (await Promise.resolve().then(() => (init_page_svelte8(), page_svelte_exports8))).default;
-    imports12 = ["_app/immutable/nodes/11.22b91b69.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/colorHelper.c678d88e.js", "_app/immutable/chunks/index.a94edd2d.js", "_app/immutable/chunks/stores.4fdc66c2.js", "_app/immutable/chunks/singletons.dac3fcc0.js", "_app/immutable/chunks/navigation.d7b086aa.js", "_app/immutable/chunks/svgs.7921f4b5.js", "_app/immutable/chunks/stores.5cc309cd.js", "_app/immutable/chunks/firebase.38a9430e.js"];
-    stylesheets12 = ["_app/immutable/assets/11.b4f32ef1.css"];
+    imports12 = ["_app/immutable/nodes/11.34e94aa2.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/each.e59479a4.js", "_app/immutable/chunks/index.3d8f63c0.js", "_app/immutable/chunks/colorHelper.5a4a377d.js", "_app/immutable/chunks/stores.d4b2ff84.js", "_app/immutable/chunks/singletons.4445e5e9.js", "_app/immutable/chunks/navigation.1729eb6f.js", "_app/immutable/chunks/svgs.7921f4b5.js", "_app/immutable/chunks/stores.c4685803.js", "_app/immutable/chunks/firebase.3f2fcf9b.js"];
+    stylesheets12 = ["_app/immutable/assets/11.fc750142.css"];
     fonts12 = [];
   }
 });
@@ -48801,7 +60367,7 @@ var init__13 = __esm({
     init_shims();
     index13 = 12;
     component13 = async () => component_cache13 ??= (await Promise.resolve().then(() => (init_page_svelte9(), page_svelte_exports9))).default;
-    imports13 = ["_app/immutable/nodes/12.fef4a8bb.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js"];
+    imports13 = ["_app/immutable/nodes/12.7c88a269.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js"];
     stylesheets13 = [];
     fonts13 = [];
   }
@@ -48819,7 +60385,7 @@ var init_page_svelte10 = __esm({
     init_ssr();
     init_firebase();
     css7 = {
-      code: ".auth-btn.svelte-q947ly{padding:1rem 2rem;border-radius:0.5rem;border:none;background-color:#000;color:#fff;font-size:1.5rem;cursor:pointer;transition:transform 0.1s ease-in-out}.auth-btn.svelte-q947ly:active{transform:scale(0.95)}.buttons.svelte-q947ly{display:flex;flex-direction:column;gap:10px}.disabled.svelte-q947ly{opacity:0.6;cursor:not-allowed}.divider.svelte-q947ly{border-bottom:2px solid rgb(117, 117, 117)}.inputs-container.svelte-q947ly{display:flex;flex-direction:column;gap:10px;& input {\n      padding: 1rem;\n      border-radius: 0.5rem;\n      background-color: #ffffff;\n      border: 2px solid #000;\n      color: #000000;\n      font-size: 1.5rem;\n      transition: transform 0.1s ease-in-out;\n    }}",
+      code: ".auth-btn.svelte-q947ly{padding:1rem 2rem;border-radius:0.5rem;border:none;background-color:#000;color:#fff;font-size:1.5rem;cursor:pointer;transition:transform 0.1s ease-in-out}.auth-btn.svelte-q947ly:active{transform:scale(0.95)}.buttons.svelte-q947ly{display:flex;flex-direction:column;gap:10px}.disabled.svelte-q947ly{opacity:0.6;cursor:not-allowed}.divider.svelte-q947ly{border-bottom:2px solid rgb(117, 117, 117)}.inputs-container.svelte-q947ly{display:flex;flex-direction:column;gap:10px;& input {\r\n      padding: 1rem;\r\n      border-radius: 0.5rem;\r\n      background-color: #ffffff;\r\n      border: 2px solid #000;\r\n      color: #000000;\r\n      font-size: 1.5rem;\r\n      transition: transform 0.1s ease-in-out;\r\n    }}",
       map: null
     };
     Page10 = create_ssr_component(($$result, $$props, $$bindings, slots) => {
@@ -48860,7 +60426,7 @@ var init__14 = __esm({
     init_shims();
     index14 = 13;
     component14 = async () => component_cache14 ??= (await Promise.resolve().then(() => (init_page_svelte10(), page_svelte_exports10))).default;
-    imports14 = ["_app/immutable/nodes/13.4b40828f.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js", "_app/immutable/chunks/firebase.38a9430e.js", "_app/immutable/chunks/singletons.dac3fcc0.js", "_app/immutable/chunks/navigation.d7b086aa.js"];
+    imports14 = ["_app/immutable/nodes/13.f2238ee2.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js", "_app/immutable/chunks/firebase.3f2fcf9b.js", "_app/immutable/chunks/singletons.4445e5e9.js", "_app/immutable/chunks/navigation.1729eb6f.js"];
     stylesheets14 = ["_app/immutable/assets/13.37ed8899.css"];
     fonts14 = [];
   }
@@ -48878,7 +60444,7 @@ var init_page_svelte11 = __esm({
     init_ssr();
     init_firebase();
     css8 = {
-      code: ".auth-btn.svelte-wc7f5e{padding:1rem 2rem;border-radius:0.5rem;border:none;background-color:#000;color:#fff;font-size:1.5rem;cursor:pointer;transition:transform 0.1s ease-in-out}.auth-btn.svelte-wc7f5e:active{transform:scale(0.95)}.buttons.svelte-wc7f5e{display:flex;flex-direction:column;gap:10px}.disabled.svelte-wc7f5e{opacity:0.6;cursor:not-allowed}.divider.svelte-wc7f5e{border-bottom:2px solid rgb(117, 117, 117)}.inputs-container.svelte-wc7f5e{display:flex;flex-direction:column;gap:10px;& input {\n      padding: 1rem;\n      border-radius: 0.5rem;\n      background-color: #ffffff;\n      border: 2px solid #000;\n      color: #000000;\n      font-size: 1.5rem;\n      transition: transform 0.1s ease-in-out;\n    }}",
+      code: ".auth-btn.svelte-wc7f5e{padding:1rem 2rem;border-radius:0.5rem;border:none;background-color:#000;color:#fff;font-size:1.5rem;cursor:pointer;transition:transform 0.1s ease-in-out}.auth-btn.svelte-wc7f5e:active{transform:scale(0.95)}.buttons.svelte-wc7f5e{display:flex;flex-direction:column;gap:10px}.disabled.svelte-wc7f5e{opacity:0.6;cursor:not-allowed}.divider.svelte-wc7f5e{border-bottom:2px solid rgb(117, 117, 117)}.inputs-container.svelte-wc7f5e{display:flex;flex-direction:column;gap:10px;& input {\r\n      padding: 1rem;\r\n      border-radius: 0.5rem;\r\n      background-color: #ffffff;\r\n      border: 2px solid #000;\r\n      color: #000000;\r\n      font-size: 1.5rem;\r\n      transition: transform 0.1s ease-in-out;\r\n    }}",
       map: null
     };
     Page11 = create_ssr_component(($$result, $$props, $$bindings, slots) => {
@@ -48929,7 +60495,7 @@ var init__15 = __esm({
     init_shims();
     index15 = 14;
     component15 = async () => component_cache15 ??= (await Promise.resolve().then(() => (init_page_svelte11(), page_svelte_exports11))).default;
-    imports15 = ["_app/immutable/nodes/14.4b75bf49.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js", "_app/immutable/chunks/firebase.38a9430e.js", "_app/immutable/chunks/singletons.dac3fcc0.js", "_app/immutable/chunks/navigation.d7b086aa.js"];
+    imports15 = ["_app/immutable/nodes/14.caf0d33e.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js", "_app/immutable/chunks/firebase.3f2fcf9b.js", "_app/immutable/chunks/singletons.4445e5e9.js", "_app/immutable/chunks/navigation.1729eb6f.js"];
     stylesheets15 = ["_app/immutable/assets/14.e1e6424b.css"];
     fonts15 = [];
   }
@@ -49142,7 +60708,7 @@ var options = {
   root: Root,
   service_worker: false,
   templates: {
-    app: ({ head, body, assets: assets2, nonce, env }) => '<!DOCTYPE html>\n<html lang="en">\n	<head>\n		<meta charset="utf-8" />\n		<link rel="icon" href="' + assets2 + '/favicon.png" />\n		<meta name="viewport" content="width=device-width" />\n		<script src="https://unpkg.com/thebe@latest/lib/index.js"></script>\n<script type="text/x-thebe-config">\n{\n    requestKernel: true,\n    binderOptions: {\n        repo: "abtinma/thebe-binder-environment",\n        ref: "master",\n    },\n}\n</script>\n		' + head + '\n	</head>\n	<body data-sveltekit-preload-data="hover">\n		<div style="display: contents">' + body + "</div>\n	</body>\n</html>\n",
+    app: ({ head, body, assets: assets2, nonce, env }) => '<!DOCTYPE html>\r\n<html lang="en">\r\n	<head>\r\n		<meta charset="utf-8" />\r\n		<link rel="icon" href="' + assets2 + '/favicon.png" />\r\n		<meta name="viewport" content="width=device-width" />\r\n		<script src="https://unpkg.com/thebe@latest/lib/index.js"></script>\r\n<script type="text/x-thebe-config">\r\n{\r\n    requestKernel: true,\r\n    binderOptions: {\r\n        repo: "abtinma/thebe-binder-environment",\r\n        ref: "master",\r\n    },\r\n}\r\n</script>\r\n		' + head + '\r\n	</head>\r\n	<body data-sveltekit-preload-data="hover">\r\n		<div style="display: contents">' + body + "</div>\r\n	</body>\r\n</html>\r\n",
     error: ({ status, message }) => '<!DOCTYPE html>\n<html lang="en">\n	<head>\n		<meta charset="utf-8" />\n		<title>' + message + `</title>
 
 		<style>
@@ -49204,7 +60770,7 @@ var options = {
 		<div class="error">
 			<span class="status">` + status + '</span>\n			<div class="message">\n				<h1>' + message + "</h1>\n			</div>\n		</div>\n	</body>\n</html>\n"
   },
-  version_hash: "muhdjm"
+  version_hash: "o7dks5"
 };
 function get_hooks() {
   return Promise.resolve().then(() => (init_hooks_server(), hooks_server_exports));
@@ -52502,10 +64068,10 @@ var manifest = (() => {
   return {
     appDir: "_app",
     appPath: "_app",
-    assets: /* @__PURE__ */ new Set(["blackhole.jpg", "favicon.png", "logo252.png", "logo680.png", "pic.png"]),
+    assets: /* @__PURE__ */ new Set(["blackhole.jpg", "favicon.png", "logo252.png", "logo680.png"]),
     mimeTypes: { ".jpg": "image/jpeg", ".png": "image/png" },
     _: {
-      client: { "start": "_app/immutable/entry/start.b6a38fae.js", "app": "_app/immutable/entry/app.4b7b7812.js", "imports": ["_app/immutable/entry/start.b6a38fae.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/singletons.dac3fcc0.js", "_app/immutable/entry/app.4b7b7812.js", "_app/immutable/chunks/scheduler.7a1f3190.js", "_app/immutable/chunks/index.a94edd2d.js"], "stylesheets": [], "fonts": [] },
+      client: { "start": "_app/immutable/entry/start.ef65f65d.js", "app": "_app/immutable/entry/app.6fea6172.js", "imports": ["_app/immutable/entry/start.ef65f65d.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/singletons.4445e5e9.js", "_app/immutable/entry/app.6fea6172.js", "_app/immutable/chunks/scheduler.ae88954b.js", "_app/immutable/chunks/index.3d8f63c0.js"], "stylesheets": [], "fonts": [] },
       nodes: [
         __memo(() => Promise.resolve().then(() => (init__(), __exports))),
         __memo(() => Promise.resolve().then(() => (init__2(), __exports2))),

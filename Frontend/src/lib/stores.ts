@@ -3,6 +3,8 @@ import { goto } from "$app/navigation";
 
 export const scrollY = writable(0);
 
+export const myKeywords = writable([]);
+
 const initialState = {
   history: [],
   currentIndex: -1,

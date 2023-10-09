@@ -20,4 +20,5 @@ export interface User {
     user_description: string;
     photoURL: string;
     projects: Project[];
+    keywordsMap: Record<string, number>;
 }

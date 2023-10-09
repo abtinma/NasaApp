@@ -3,8 +3,13 @@
   import { scrollY } from "$lib/stores";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
-  import { user } from "$lib/auth/firebase";
-  import { navigateBack, navigateForward, historyStore } from "$lib/stores.ts";
+  import { user, resetKeywordsMap } from "$lib/auth/firebase";
+  import {
+    navigateBack,
+    navigateForward,
+    historyStore,
+    myKeywords,
+  } from "$lib/stores.ts";
   import * as svgs from "$lib/svgs.js";
   import { signOut } from "$lib/auth/firebase.ts";
 
@@ -54,12 +59,31 @@
       ><span class="icon">{@html svgs.folderSvg}</span>Sample Project</button
     >
     {#if $user}
-    <button class="logout" on:click={() => {
-      signOut();
-    }}>
-      Logout
-
-    </button>
+      <button
+        class="logout"
+        on:click={() => {
+          signOut();
+        }}
+      >
+        Logout
+      </button>
+      <div class="keywords">
+        <h3>Keywords</h3>
+        {#each $myKeywords.slice(0, 10) as keyword}
+          <div>
+            <p>{keyword[0]}</p>
+            <p>{keyword[1]}</p>
+          </div>
+        {/each}
+      </div>
+      <button
+        class="reset"
+        on:click={() => {
+          resetKeywordsMap();
+        }}
+      >
+        Reset Keywords
+      </button>
     {/if}
   </div>
   <div
@@ -290,6 +314,53 @@
     }
     &:active {
       transform: scale(0.98);
+    }
+  }
+  .reset {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    border-radius: 8px;
+    /* margin-top: auto; */
+    background-color: rgb(216, 113, 113);
+    transition: transform 0.1s ease-in-out;
+
+    &:hover {
+      cursor: pointer;
+      background-color: rgb(232, 232, 232);
+    }
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+  .keywords {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    & div {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 40px;
+      width: 100%;
+      border-radius: 8px;
+      padding: 0 8px;
+
+      text-overflow: ellipsis;
+      overflow: hidden;
+
+      /* margin-top: auto; */
+      background-color: rgb(237, 237, 237);
+      transition: transform 0.1s ease-in-out;
+
+      &:hover {
+        cursor: pointer;
+        background-color: rgb(232, 232, 232);
+      }
+      &:active {
+        transform: scale(0.98);
+      }
     }
   }
 </style>

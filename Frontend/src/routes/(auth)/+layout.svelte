@@ -1,12 +1,5 @@
 <script>
   import { onMount } from "svelte";
-  import {
-    user,
-    signInWithGoogle,
-    signOut,
-    signInWithEmail,
-    signUpWithEmail,
-  } from "$lib/auth/firebase.ts";
   import JupyterNotebook from "$lib/JupyterNotebook.svelte";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
@@ -38,17 +31,6 @@
 
 <div class="container">
   <div class="sub-container">
-    <h2>
-      Welcome
-      {#if $user}
-        {$user.email}
-      {:else}
-        Stranger!
-      {/if}
-    </h2>
-    {#if $user}
-      <h3>UID: {$user.uid}</h3>
-    {/if}
     <div class="row">
       <button class:selected={$page.url.pathname.includes("/signup")} on:click={() => goto("/signup")}>Sign Up</button>
       <button class:selected={$page.url.pathname.includes("/login")} on:click={() => goto("/login")}>Login</button>

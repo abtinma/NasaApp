@@ -7,7 +7,11 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { user } from "$lib/auth/firebase";
-  import { addKeywordsToUserDocument, readProjectDetails, readUserDetails } from "$lib/auth/firebase";
+  import {
+    addKeywordsToUserDocument,
+    readProjectDetails,
+    readUserDetails,
+  } from "$lib/auth/firebase";
 
   let project: Project | null = null;
   let projectUser = null;
@@ -20,11 +24,11 @@
 
   async function getProjectDetails(projectId) {
     project = await readProjectDetails(projectId);
+    if (!project) return;
     projectUser = await readUserDetails(project.userId);
-    console.log(project, projectUser);
-    if (project) {
+    if (project && projectUser && $user) {
       const skills = project.skills_needed.map((skill) => skill.toLowerCase());
-      addKeywordsToUserDocument($user.uid, [...project.extracted_keywords, ...skills])
+      addKeywordsToUserDocument([...project.extracted_keywords, ...skills]);
     }
   }
 
@@ -67,7 +71,7 @@
       <div class="right">
         <div class="project-owner">
           <div>
-            <!-- <h2 class="">Project by:</h2> -->
+
             <p>{projectUser?.name ?? ""}</p>
             <p class="members">
               {projectUser?.username ? "@" + projectUser?.username : ""}
@@ -75,7 +79,6 @@
           </div>
           <img src={projectUser?.photoURL} alt="" />
         </div>
-        <!-- <hr> -->
         <div>
           <h2>Skills Needed</h2>
           <div class="skills">
@@ -167,6 +170,9 @@
   }
   .left {
     font-size: 18px;
+  }
+  .right {
+    min-width: 250px;
   }
   hr {
     border: none;

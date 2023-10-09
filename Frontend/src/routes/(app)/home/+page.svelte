@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { stringToColor } from "$lib/colorHelper";
-  import { readProjects } from "$lib/auth/firebase.ts";
+  import { readProjects,getProjectsBasedOnKeyword } from "$lib/auth/firebase.ts";
   import { goto } from "$app/navigation";
+  import { myKeywords } from "$lib/stores";
 
   function getRandomElement(array) {
     return array[Math.floor(Math.random() * array.length)];
@@ -49,11 +50,20 @@
   }
 
   let projects: any[] = [];
+  let mounted = false;
   onMount(async () => {
+    mounted = true;
     console.warn("Generating random projects");
     // read from projects collection on firebase
-    projects = await readProjects();
+    // projects = await readProjects();
   });
+
+  async function getProjects(keywords) {
+    projects = await getProjectsBasedOnKeyword(keywords.slice(0, 10));
+  }
+
+  $: mounted && $myKeywords  && getProjects($myKeywords);
+
 
   
 

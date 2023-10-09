@@ -5,7 +5,6 @@
   import { scrollY } from "$lib/stores";
   import { messagesSvg } from "$lib/svgs";
   import { goto } from "$app/navigation";
-  import { page } from "$app/stores";
 
   let project: Project | null = null;
 

@@ -6,6 +6,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
+import type { Readable } from "svelte/store";
 import {
   getFirestore,
   doc,
@@ -24,9 +25,10 @@ import {
 import fs from "fs";
 import usersJson from "./mock_users.json";
 import projectsJson from "./mock_projects.json";
-import type { User } from "firebase/auth";
+import type { User as AuthUser } from "firebase/auth";
+import type { Project, User } from "$lib/types.ts";
 import { initializeApp } from "firebase/app";
-import { writable, derived } from "svelte/store";
+import { writable, derived, get } from "svelte/store";
 import { goto } from "$app/navigation";
 
 const firebaseConfig = {
@@ -50,13 +52,13 @@ function userStore() {
 
   if (!auth || !globalThis.window) {
     console.warn("Auth is not initialized or not in browser");
-    const { subscribe } = writable<User | null>(null);
+    const { subscribe } = writable<AuthUser | null>(null);
     return {
       subscribe,
     };
   }
 
-  const { subscribe } = writable<User | null>(
+  const { subscribe } = writable<AuthUser | null>(
     auth?.currentUser ?? null,
     (set) => {
       unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -74,6 +76,51 @@ function userStore() {
 }
 
 export const user = userStore();
+
+export function docStore<T>(path: string) {
+  let unsubscribe: () => void;
+  const docRef = doc(db, path);
+
+  const { subscribe } = writable<{ data: T | null; status: boolean | null }>(
+    { data: null, status: null },
+    (startSet) => {
+      unsubscribe = onSnapshot(docRef, (snapshot) => {
+        const exists = snapshot.exists();
+        if (exists) {
+          startSet({ data: (snapshot.data() as T) ?? null, status: true });
+        } else {
+          startSet({ data: null, status: false });
+        }
+      });
+      return () => unsubscribe();
+    }
+  );
+
+  return {
+    subscribe,
+    ref: docRef,
+    id: docRef.id,
+  };
+}
+
+export const thisUser: Readable<User | null | undefined> = derived(
+  user,
+  ($user, set) => {
+    if ($user) {
+      return docStore<User>(`users/${$user.uid}`).subscribe(
+        ({ data, status }) => {
+          if (status === true) {
+            set(data);
+          } else if (status === false) {
+            set(null);
+          }
+        }
+      );
+    } else {
+      set(undefined);
+    }
+  }
+);
 
 export function signOut() {
   auth.signOut();
@@ -149,14 +196,12 @@ export async function uploadDocs() {
     }
   };
 
-  // Function to upload projects
   const uploadProjects = async () => {
     for (const project of projects) {
       await setDoc(doc(db, "projects", project.project_id), project);
     }
   };
 
-  // Upload to Firestore
   const uploadToFirestore = async () => {
     await uploadUsers();
     await uploadProjects();
@@ -168,81 +213,134 @@ export async function uploadDocs() {
   });
 }
 
-let lastVisible = null;
-
-export async function readProjects() {
-  // Create a reference to the project collection
+export async function readProjects(fetchLimit = 25) {
   const projectCollection = collection(db, "projects");
+  let projectQuery = query(projectCollection, limit(fetchLimit));
 
-  // Create a query with a limit
-  let projectQuery = query(projectCollection, limit(40));
-
-  // If we have a snapshot of the last visible document, start the query after it
-  if (lastVisible) {
-    projectQuery = query(projectCollection, startAfter(lastVisible), limit(40));
-  }
-
-  // Execute the query
   const projectSnapshot = await getDocs(projectQuery);
-
-  // Get the last visible document
-  // lastVisible = projectSnapshot.docs[projectSnapshot.docs.length - 1];
 
   const projectList = projectSnapshot.docs.map((doc) => doc.data());
   console.log(projectList);
   return projectList;
 }
 
-export async function readProjectDetails(id): Project {
+export async function readProjectDetails(id: string): Promise<Project | null> {
   const projectRef = doc(db, "projects", id);
-
   const projectSnapshot = await getDoc(projectRef);
 
   if (projectSnapshot.exists()) {
-    console.log("Document data:", projectSnapshot.data());
-    return projectSnapshot.data();
+    return projectSnapshot.data() as Project;
   } else {
     console.log("No such document!");
     return null;
   }
 }
 
-export async function readUserDetails(id): Promise<User | null> {
+export async function readUserDetails(id: string): Promise<User | null> {
   const userRef = doc(db, "users", id);
-
   const userSnapshot = await getDoc(userRef);
 
   if (userSnapshot.exists()) {
-    console.log("Document data:", userSnapshot.data());
     return userSnapshot.data() as User;
   } else {
-    console.log("No such document!");
     return null;
   }
 }
 
-export async function addKeywordsToUserDocument(
-  uid: string,
-  keywords: string[]
-) {
-  const userDoc = doc(db, "users", uid);
-  const userSnap = await getDoc(userDoc);
+export async function addKeywordsToUserDocument(keywords: string[]) {
+  const userData = get(thisUser);
+  const userRef = get(user);
 
-  if (userSnap.exists()) {
-    console.warn(userSnap.data());
-    let userData = userSnap.data();
-    let userKeywordsMap = userData?.keywordsMap || {};
+  if (!userData || !userRef) {
+    console.warn("No user data or user ref");
+    return;
+  }
+  const userDoc = doc(db, "users", userRef?.uid);
 
-    keywords.forEach((keyword: string) => {
-      if (userKeywordsMap[keyword] || userKeywordsMap[keyword] === 0) {
-        userKeywordsMap[keyword]++;
-      } else {
-        userKeywordsMap[keyword] = 0;
+  let userKeywordsMap = userData?.keywordsMap || {};
+
+  keywords.forEach((keyword: string) => {
+    if (userKeywordsMap[keyword] || userKeywordsMap[keyword] === 0) {
+      userKeywordsMap[keyword] = Math.min(userKeywordsMap[keyword] + 1, 10);
+    } else {
+      userKeywordsMap[keyword] = 0;
+    }
+  });
+  await updateDoc(userDoc, {
+    keywordsMap: userKeywordsMap,
+  });
+}
+
+export async function resetKeywordsMap() {
+  const userData = get(thisUser);
+  const userRef = get(user);
+
+  if (!userData || !userRef) {
+    console.warn("No user data or user ref");
+    return;
+  }
+  const userDoc = doc(db, "users", userRef?.uid);
+
+  await updateDoc(userDoc, {
+    keywordsMap: {},
+  });
+}
+
+export async function getProjectsBasedOnKeyword(keywordsWithWeights) {
+  if (keywordsWithWeights.length === 0) {
+    return await readProjects(20);
+  }
+  let aggregatedResults = [];
+  let uniqueProjectIds = new Set();
+  let queriedKeywords = [];
+
+  const queryPromises = [];
+
+  for (const [keyword, weight] of keywordsWithWeights) {
+    queriedKeywords.push(keyword);
+
+    const q = query(
+      collection(db, "projects"),
+      where("extracted_keywords", "array-contains", keyword),
+      limit(weight == 0 ? 1 : weight)
+    );
+
+    const promise = getDocs(q).then((querySnapshot) => {
+      querySnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const projectId = doc.id;
+
+        if (!uniqueProjectIds.has(projectId)) {
+          uniqueProjectIds.add(projectId);
+          aggregatedResults.push(data);
+        }
+      });
+    });
+
+    queryPromises.push(promise);
+  }
+
+  await Promise.all(queryPromises);
+
+  if (aggregatedResults.length < 20) {
+    const additionalLimit = 20 - aggregatedResults.length;
+    const additionalQuery = query(
+      collection(db, "projects"),
+      where("extracted_keywords", "not-in", queriedKeywords),
+      limit(additionalLimit)
+    );
+    const additionalSnapshot = await getDocs(additionalQuery);
+
+    additionalSnapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      const projectId = doc.id;
+
+      if (!uniqueProjectIds.has(projectId)) {
+        uniqueProjectIds.add(projectId);
+        aggregatedResults.push(data);
       }
     });
-    // Update the user document in Firestore
-    await updateDoc(userDoc, {
-      keywordsMap: userKeywordsMap,
-    });
   }
+
+  return aggregatedResults;
 }
